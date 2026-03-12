@@ -34,13 +34,13 @@ function mockParseWorkout(text: string): { parsed: ParsedWorkout; question?: str
 
   // Simple mock: detect "bench" mention
   if (lower.includes('bench')) {
-    const weightMatch = lower.match(/(\d+)\s*(?:lb|kg|for)/);
-    const repsMatches = [...lower.matchAll(/for\s+([\d\s]+)/g)];
+    const benchContext = lower.split('bench')[1]?.split(/then|,/)[0] || '';
+    const weightMatch = benchContext.match(/(\d+)\s*(?:lb|kg|for)?/);
     exercises.push({
       id: `e-${Date.now()}-1`,
       name: 'Bench Press',
-      variant: lower.includes('incline') ? 'incline' : 'flat',
-      weightUnit: lower.includes('kg') ? 'kg' : 'lb',
+      variant: benchContext.includes('incline') ? 'incline' : 'flat',
+      weightUnit: benchContext.includes('kg') ? 'kg' : 'lb',
       sets: [
         { setNumber: 1, reps: 8, weight: weightMatch ? parseInt(weightMatch[1]) : 135 },
         { setNumber: 2, reps: 8, weight: weightMatch ? parseInt(weightMatch[1]) : 135 },
