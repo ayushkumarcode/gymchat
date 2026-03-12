@@ -15,6 +15,7 @@ export interface ParsedWorkout {
   notes?: string;
   exercises: Exercise[];
   clarifyingQuestion?: string;
+  durationMin?: number;
 }
 
 const SYSTEM_PROMPT = `You are a workout logging assistant. Parse natural, messy, spoken workout descriptions into structured data.
@@ -60,7 +61,8 @@ You MUST respond with valid JSON matching this exact schema:
       ]
     }
   ],
-  "clarifyingQuestion": "string or null - only ask if truly needed"
+  "clarifyingQuestion": "string or null - only ask if truly needed",
+  "durationMin": "number or null - workout duration in minutes if the user mentions it"
 }
 
 Respond ONLY with valid JSON. No markdown, no code fences, no explanation.`;
@@ -116,6 +118,7 @@ export async function parseWorkoutWithAI(
       notes: parsed.notes || undefined,
       exercises,
       clarifyingQuestion: parsed.clarifyingQuestion || undefined,
+      durationMin: parsed.durationMin || undefined,
     };
   } catch (error) {
     console.error('AI parsing error:', error);

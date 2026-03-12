@@ -354,7 +354,7 @@ export default function Dashboard() {
     setShowAddExercise(false);
   };
 
-  const handleConfirmWorkout = (parsed: { label?: string; notes?: string; exercises: Exercise[] }) => {
+  const handleConfirmWorkout = (parsed: { label?: string; notes?: string; exercises: Exercise[]; durationMin?: number }) => {
     const today = getTodayStr();
     const existing = workouts.find((w) => w.date === today);
 
@@ -366,6 +366,7 @@ export default function Dashboard() {
             ...w,
             label: parsed.label || w.label,
             notes: parsed.notes || w.notes,
+            durationMin: parsed.durationMin || w.durationMin,
             exercises: [...w.exercises, ...parsed.exercises],
           };
         })
@@ -376,6 +377,7 @@ export default function Dashboard() {
         date: today,
         label: parsed.label,
         notes: parsed.notes,
+        durationMin: parsed.durationMin,
         exercises: parsed.exercises,
         createdAt: new Date().toISOString(),
       };
@@ -532,9 +534,10 @@ export default function Dashboard() {
             const totalSets = selectedWorkout.exercises.reduce((sum, ex) => sum + ex.sets.filter(s => !s.isWarmup).length, 0);
             const totalReps = selectedWorkout.exercises.reduce((sum, ex) => sum + ex.sets.filter(s => !s.isWarmup).reduce((r, s) => r + s.reps, 0), 0);
             const totalVolume = selectedWorkout.exercises.reduce((sum, ex) => sum + ex.sets.filter(s => !s.isWarmup).reduce((v, s) => v + s.weight * s.reps, 0), 0);
+            const durationStr = selectedWorkout.durationMin ? ` · ${selectedWorkout.durationMin}min` : '';
             return (
               <Text style={styles.volumeSummary}>
-                {totalSets} sets · {totalReps} reps{totalVolume > 0 ? ` · ${totalVolume.toLocaleString()} lb` : ''}
+                {totalSets} sets · {totalReps} reps{totalVolume > 0 ? ` · ${totalVolume.toLocaleString()} ${settings.weightUnit}` : ''}{durationStr}
               </Text>
             );
           })()}

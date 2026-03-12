@@ -21,6 +21,7 @@ export interface Workout {
   exercises: Exercise[];
   notes?: string; // "felt weaker today"
   createdAt: string;
+  durationMin?: number; // workout duration in minutes
 }
 
 export interface DayData {
