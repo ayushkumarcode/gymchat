@@ -7,6 +7,7 @@ const SETTINGS_KEY = 'gymchat_settings';
 export interface AppSettings {
   weightUnit: 'kg' | 'lb';
   userName: string;
+  bodyWeight?: number;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {

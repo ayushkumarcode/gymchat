@@ -53,14 +53,17 @@ function workoutsToCSV(workouts: Workout[]): string {
 export default function SettingsSheet({ visible, onClose, settings, onSettingsChange, workouts, onClearData, onImportData }: SettingsSheetProps) {
   const [name, setName] = useState(settings.userName);
   const [unit, setUnit] = useState(settings.weightUnit);
+  const [bodyWeight, setBodyWeight] = useState(settings.bodyWeight ? String(settings.bodyWeight) : '');
 
   useEffect(() => {
     setName(settings.userName);
     setUnit(settings.weightUnit);
+    setBodyWeight(settings.bodyWeight ? String(settings.bodyWeight) : '');
   }, [settings]);
 
   const handleSave = () => {
-    const updated = { ...settings, userName: name, weightUnit: unit };
+    const bw = parseInt(bodyWeight, 10);
+    const updated = { ...settings, userName: name, weightUnit: unit, bodyWeight: bw > 0 ? bw : undefined };
     onSettingsChange(updated);
     saveSettings(updated);
     onClose();
@@ -195,6 +198,21 @@ export default function SettingsSheet({ visible, onClose, settings, onSettingsCh
               </View>
             </View>
 
+            <View style={styles.row}>
+              <Text style={styles.label}>Body weight</Text>
+              <View style={styles.bwRow}>
+                <TextInput
+                  style={[styles.textInput, { width: 80 }]}
+                  value={bodyWeight}
+                  onChangeText={setBodyWeight}
+                  placeholder="—"
+                  placeholderTextColor={colors.textTertiary}
+                  keyboardType="number-pad"
+                />
+                <Text style={styles.bwUnit}>{unit}</Text>
+              </View>
+            </View>
+
             {/* Data section */}
             <View style={styles.dataSection}>
               <Text style={styles.dataSummary}>
@@ -288,6 +306,15 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     width: 180,
     textAlign: 'right',
+  },
+  bwRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  bwUnit: {
+    color: colors.textTertiary,
+    fontSize: fontSize.sm,
   },
   unitToggle: {
     flexDirection: 'row',
