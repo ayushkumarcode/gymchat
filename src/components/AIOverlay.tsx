@@ -11,6 +11,7 @@ import {
   Animated,
   ScrollView,
   ActivityIndicator,
+  PanResponder,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { colors, spacing, fontSize } from '../utils/theme';
@@ -84,14 +85,45 @@ function useSpeechRecognition() {
   return { isListening, transcript, isSupported, startListening, stopListening };
 }
 
+const PLACEHOLDER_EXAMPLES = [
+  'bench 185 3x8, incline db 60 3x10...',
+  'squat 225x5x5 then RDL 185 3x8...',
+  'pull day: pullups 3x10, rows 135 4x8...',
+  'OHP 95 3x8, lat raises 25 4x12...',
+  'deadlift worked up to 315x3, felt strong...',
+  'leg press 4 plates 3x12, curls 30 3x10...',
+];
+
 export default function AIOverlay({ visible, onClose, onConfirm, weightUnit = 'lb' }: AIOverlayProps) {
   const [input, setInput] = useState('');
   const [parsed, setParsed] = useState<ParsedWorkout | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [placeholderIdx, setPlaceholderIdx] = useState(0);
   const inputRef = useRef<TextInput>(null);
   const slideAnim = useRef(new Animated.Value(0)).current;
+  const panY = useRef(new Animated.Value(0)).current;
   const scrollRef = useRef<ScrollView>(null);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gs) => gs.dy > 5,
+      onPanResponderMove: (_, gs) => {
+        if (gs.dy > 0) panY.setValue(gs.dy);
+      },
+      onPanResponderRelease: (_, gs) => {
+        if (gs.dy > 80 || gs.vy > 0.5) {
+          Animated.timing(panY, { toValue: 600, duration: 200, useNativeDriver: true }).start(() => {
+            panY.setValue(0);
+            onClose();
+          });
+        } else {
+          Animated.spring(panY, { toValue: 0, useNativeDriver: true, tension: 80, friction: 10 }).start();
+        }
+      },
+    })
+  ).current;
 
   const { isListening, transcript, isSupported: micSupported, startListening, stopListening } = useSpeechRecognition();
 
@@ -104,6 +136,7 @@ export default function AIOverlay({ visible, onClose, onConfirm, weightUnit = 'l
 
   useEffect(() => {
     if (visible) {
+      setPlaceholderIdx(Math.floor(Math.random() * PLACEHOLDER_EXAMPLES.length));
       Animated.spring(slideAnim, {
         toValue: 1,
         useNativeDriver: true,
@@ -182,9 +215,11 @@ export default function AIOverlay({ visible, onClose, onConfirm, weightUnit = 'l
       >
         <TouchableOpacity style={styles.backdropTouch} onPress={onClose} activeOpacity={1} />
 
-        <Animated.View style={[styles.sheetOuter, { transform: [{ translateY }] }]}>
+        <Animated.View style={[styles.sheetOuter, { transform: [{ translateY }, { translateY: panY }] }]}>
           <BlurView intensity={40} tint="dark" style={styles.sheet}>
-          <View style={styles.handle} />
+          <View {...panResponder.panHandlers} style={styles.handleZone}>
+            <View style={styles.handle} />
+          </View>
 
           <ScrollView
             ref={scrollRef}
@@ -292,7 +327,7 @@ export default function AIOverlay({ visible, onClose, onConfirm, weightUnit = 'l
               style={styles.input}
               value={input}
               onChangeText={setInput}
-              placeholder={isListening ? 'Speak your workout...' : 'Type or speak your workout...'}
+              placeholder={isListening ? 'Speak your workout...' : PLACEHOLDER_EXAMPLES[placeholderIdx]}
               placeholderTextColor={colors.textTertiary}
               multiline
               maxLength={2000}
@@ -338,14 +373,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(18, 18, 18, 0.88)',
     paddingBottom: spacing.xl,
   },
+  handleZone: {
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+  },
   handle: {
     width: 36,
     height: 4,
     borderRadius: 2,
     backgroundColor: colors.textTertiary,
-    alignSelf: 'center',
-    marginTop: spacing.sm,
-    marginBottom: spacing.sm,
   },
   content: {
     paddingHorizontal: spacing.md,
