@@ -139,6 +139,8 @@ export default function Dashboard() {
   const [labelDraft, setLabelDraft] = useState('');
   const [restTimerVisible, setRestTimerVisible] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scrollRef = useRef<ScrollView>(null);
+  const workoutSectionY = useRef(0);
 
   // Load workouts and settings from storage on mount
   useEffect(() => {
@@ -247,6 +249,12 @@ export default function Dashboard() {
 
   const handleSelectDate = (date: string) => {
     setSelectedDate(date);
+    // Scroll to workout section after a brief delay for state update
+    setTimeout(() => {
+      if (workoutSectionY.current > 0) {
+        scrollRef.current?.scrollTo({ y: workoutSectionY.current - 10, animated: true });
+      }
+    }, 100);
   };
 
   const handleUpdateSet = (exerciseId: string, setIndex: number, field: 'reps' | 'weight', value: number) => {
@@ -464,7 +472,7 @@ export default function Dashboard() {
       </View>
 
       <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollRef} style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Stats bar */}
         {workouts.length > 0 && (
           <View style={styles.statsRow}>
@@ -501,7 +509,7 @@ export default function Dashboard() {
         />
 
         {/* Selected day workout */}
-        <View style={styles.section}>
+        <View style={styles.section} onLayout={(e) => { workoutSectionY.current = e.nativeEvent.layout.y; }}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
             <Text style={styles.sectionTitle}>

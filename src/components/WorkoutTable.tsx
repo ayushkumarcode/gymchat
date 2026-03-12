@@ -72,6 +72,17 @@ export default function WorkoutTable({ exercise, previousExercise, prWeight, onU
     }
   };
 
+  // Compute estimated 1RM from heaviest working set (Epley formula)
+  const estimated1RM = (() => {
+    let best = 0;
+    for (const s of exercise.sets) {
+      if (s.isWarmup || s.weight <= 0) continue;
+      const e1rm = s.reps === 1 ? s.weight : Math.round(s.weight * (1 + s.reps / 30));
+      if (e1rm > best) best = e1rm;
+    }
+    return best;
+  })();
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -80,6 +91,9 @@ export default function WorkoutTable({ exercise, previousExercise, prWeight, onU
           {exercise.variant ? <Text style={styles.variant}> {exercise.variant}</Text> : null}
         </Text>
         <View style={styles.headerRight}>
+          {estimated1RM > 0 && (
+            <Text style={styles.e1rmLabel}>e1RM {estimated1RM}</Text>
+          )}
           <Text style={styles.weightLabel}>
             {exercise.sets[0]?.weight > 0 ? `${exercise.sets[0].weight} ${exercise.weightUnit}` : 'BW'}
           </Text>
@@ -219,6 +233,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+  },
+  e1rmLabel: {
+    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    fontVariant: ['tabular-nums'],
   },
   weightLabel: {
     color: colors.accent,
