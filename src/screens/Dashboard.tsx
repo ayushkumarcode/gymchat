@@ -23,11 +23,8 @@ function formatDate(dateStr: string): string {
   return `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
 }
 
-function computeHeatmapData(workouts: Workout[]): DayData[] {
+function computeHeatmapData(workouts: Workout[], year: number, month: number): DayData[] {
   const days: DayData[] = [];
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
   for (let d = 1; d <= daysInMonth; d++) {
@@ -43,6 +40,11 @@ function computeHeatmapData(workouts: Workout[]): DayData[] {
     days.push({ date, intensity, workout });
   }
   return days;
+}
+
+function getMonthLabel(year: number, month: number): string {
+  const d = new Date(year, month, 1);
+  return d.toLocaleString('default', { month: 'long', year: 'numeric' });
 }
 
 function computeTrends(workouts: Workout[]): LiftTrend[] {
@@ -88,6 +90,8 @@ export default function Dashboard() {
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [settings, setSettings] = useState<AppSettings>({ weightUnit: 'lb', userName: '' });
   const [isLoading, setIsLoading] = useState(true);
+  const [viewYear, setViewYear] = useState(new Date().getFullYear());
+  const [viewMonth, setViewMonth] = useState(new Date().getMonth());
 
   // Load workouts and settings from storage on mount
   useEffect(() => {
@@ -107,8 +111,31 @@ export default function Dashboard() {
     });
   }, []);
 
-  const heatmapData = useMemo(() => computeHeatmapData(workouts), [workouts]);
+  const heatmapData = useMemo(() => computeHeatmapData(workouts, viewYear, viewMonth), [workouts, viewYear, viewMonth]);
+  const monthLabel = useMemo(() => getMonthLabel(viewYear, viewMonth), [viewYear, viewMonth]);
   const trends = useMemo(() => computeTrends(workouts), [workouts]);
+
+  const now = new Date();
+  const canGoNext = viewYear < now.getFullYear() || (viewYear === now.getFullYear() && viewMonth < now.getMonth());
+
+  const handlePrevMonth = () => {
+    if (viewMonth === 0) {
+      setViewYear(viewYear - 1);
+      setViewMonth(11);
+    } else {
+      setViewMonth(viewMonth - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (!canGoNext) return;
+    if (viewMonth === 11) {
+      setViewYear(viewYear + 1);
+      setViewMonth(0);
+    } else {
+      setViewMonth(viewMonth + 1);
+    }
+  };
 
   const selectedWorkout = workouts.find((w) => w.date === selectedDate);
   const isToday = selectedDate === getTodayStr();
@@ -243,6 +270,10 @@ export default function Dashboard() {
           data={heatmapData}
           selectedDate={selectedDate}
           onSelectDate={handleSelectDate}
+          monthLabel={monthLabel}
+          onPrevMonth={handlePrevMonth}
+          onNextMonth={handleNextMonth}
+          canGoNext={canGoNext}
         />
 
         {/* Selected day workout */}

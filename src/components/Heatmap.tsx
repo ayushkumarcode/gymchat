@@ -7,6 +7,10 @@ interface HeatmapProps {
   data: DayData[];
   selectedDate: string | null;
   onSelectDate: (date: string) => void;
+  monthLabel: string;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+  canGoNext: boolean;
 }
 
 const CELL_GAP = 5;
@@ -21,23 +25,16 @@ function getIntensityColor(intensity: 0 | 1 | 2 | 3): string {
   }
 }
 
-function getMonthName(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleString('default', { month: 'long', year: 'numeric' });
-}
-
 function isToday(dateStr: string): boolean {
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   return dateStr === todayStr;
 }
 
-export default function Heatmap({ data, selectedDate, onSelectDate }: HeatmapProps) {
+export default function Heatmap({ data, selectedDate, onSelectDate, monthLabel, onPrevMonth, onNextMonth, canGoNext }: HeatmapProps) {
   const [containerWidth, setContainerWidth] = useState(0);
 
   if (data.length === 0) return null;
-
-  const monthLabel = getMonthName(data[0].date);
 
   // Build weeks grid — first day of month might not be Monday
   const firstDate = new Date(data[0].date + 'T00:00:00');
@@ -59,7 +56,6 @@ export default function Heatmap({ data, selectedDate, onSelectDate }: HeatmapPro
     weeks.push(currentWeek);
   }
 
-  // 7 cells with 6 gaps between them
   const cellSize = containerWidth > 0
     ? Math.floor((containerWidth - CELL_GAP * 6) / 7)
     : 36;
@@ -70,7 +66,20 @@ export default function Heatmap({ data, selectedDate, onSelectDate }: HeatmapPro
 
   return (
     <View style={styles.container} onLayout={handleLayout}>
-      <Text style={styles.monthLabel}>{monthLabel}</Text>
+      <View style={styles.monthRow}>
+        <TouchableOpacity onPress={onPrevMonth} style={styles.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Text style={styles.navArrow}>‹</Text>
+        </TouchableOpacity>
+        <Text style={styles.monthLabel}>{monthLabel}</Text>
+        <TouchableOpacity
+          onPress={onNextMonth}
+          style={styles.navBtn}
+          disabled={!canGoNext}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={[styles.navArrow, !canGoNext && styles.navArrowDisabled]}>›</Text>
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.dayLabelsRow}>
         {DAY_LABELS.map((label) => (
@@ -121,13 +130,31 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xs,
     paddingBottom: spacing.sm,
   },
+  monthRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
   monthLabel: {
     color: colors.textSecondary,
     fontSize: fontSize.sm,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginBottom: spacing.sm,
+  },
+  navBtn: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  navArrow: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: '300',
+  },
+  navArrowDisabled: {
+    color: colors.textTertiary,
+    opacity: 0.3,
   },
   dayLabelsRow: {
     flexDirection: 'row',
