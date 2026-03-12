@@ -177,6 +177,30 @@ export default function Dashboard() {
     }
   };
 
+  // Build map of previous exercise sessions for delta comparison
+  const previousExerciseMap = useMemo(() => {
+    const map: Record<string, Exercise> = {};
+    if (!selectedDate) return map;
+
+    // Sort workouts by date descending, find most recent before selected date
+    const sorted = [...workouts].sort((a, b) => b.date.localeCompare(a.date));
+    const selectedWorkout = sorted.find((w) => w.date === selectedDate);
+    if (!selectedWorkout) return map;
+
+    for (const ex of selectedWorkout.exercises) {
+      // Find the same exercise in a previous workout
+      for (const w of sorted) {
+        if (w.date >= selectedDate) continue;
+        const prevEx = w.exercises.find((e) => e.name === ex.name);
+        if (prevEx) {
+          map[ex.id] = prevEx;
+          break;
+        }
+      }
+    }
+    return map;
+  }, [workouts, selectedDate]);
+
   const selectedWorkout = workouts.find((w) => w.date === selectedDate);
   const isToday = selectedDate === getTodayStr();
 
@@ -361,6 +385,7 @@ export default function Dashboard() {
               <WorkoutTable
                 key={exercise.id}
                 exercise={exercise}
+                previousExercise={previousExerciseMap[exercise.id]}
                 onUpdateSet={handleUpdateSet}
                 onAddSet={handleAddSet}
                 onDeleteSet={handleDeleteSet}
