@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -28,6 +28,62 @@ interface Message {
   content: string;
 }
 
+// Web Speech API hook
+function useSpeechRecognition() {
+  const [isListening, setIsListening] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const recognitionRef = useRef<any>(null);
+
+  const isSupported = Platform.OS === 'web' && typeof window !== 'undefined' &&
+    ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+
+  const startListening = useCallback(() => {
+    if (!isSupported) return;
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = (event: any) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+      for (let i = 0; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+      setTranscript(finalTranscript || interimTranscript);
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
+    setTranscript('');
+  }, [isSupported]);
+
+  const stopListening = useCallback(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
+  }, []);
+
+  return { isListening, transcript, isSupported, startListening, stopListening };
+}
+
 export default function AIOverlay({ visible, onClose, onConfirm }: AIOverlayProps) {
   const [input, setInput] = useState('');
   const [parsed, setParsed] = useState<ParsedWorkout | null>(null);
@@ -35,6 +91,16 @@ export default function AIOverlay({ visible, onClose, onConfirm }: AIOverlayProp
   const [messages, setMessages] = useState<Message[]>([]);
   const inputRef = useRef<TextInput>(null);
   const slideAnim = useRef(new Animated.Value(0)).current;
+  const scrollRef = useRef<ScrollView>(null);
+
+  const { isListening, transcript, isSupported: micSupported, startListening, stopListening } = useSpeechRecognition();
+
+  // Sync transcript to input while listening
+  useEffect(() => {
+    if (isListening && transcript) {
+      setInput(transcript);
+    }
+  }, [transcript, isListening]);
 
   useEffect(() => {
     if (visible) {
@@ -50,11 +116,13 @@ export default function AIOverlay({ visible, onClose, onConfirm }: AIOverlayProp
       setInput('');
       setParsed(null);
       setMessages([]);
+      if (isListening) stopListening();
     }
   }, [visible]);
 
   const handleSend = async () => {
     if (!input.trim() || isProcessing) return;
+    if (isListening) stopListening();
 
     const userMessage = input.trim();
     setInput('');
@@ -64,19 +132,17 @@ export default function AIOverlay({ visible, onClose, onConfirm }: AIOverlayProp
     const updatedMessages: Message[] = [...messages, { role: 'user', content: userMessage }];
     setMessages(updatedMessages);
 
+    // Scroll to bottom after adding message
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+
     try {
       const result = await parseWorkoutWithAI(userMessage, messages);
 
-      // Store the AI's JSON response as an assistant message for context
       const assistantContent = JSON.stringify(result);
       setMessages([...updatedMessages, { role: 'assistant', content: assistantContent }]);
 
       setParsed(result);
-
-      // If there's a clarifying question, keep the overlay open for follow-up
-      if (result.clarifyingQuestion) {
-        // User can respond and we'll parse again with context
-      }
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (error) {
       console.error('AI error:', error);
       setParsed({
@@ -92,6 +158,14 @@ export default function AIOverlay({ visible, onClose, onConfirm }: AIOverlayProp
     if (parsed && parsed.exercises.length > 0) {
       onConfirm(parsed);
       onClose();
+    }
+  };
+
+  const handleMicToggle = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
     }
   };
 
@@ -112,10 +186,15 @@ export default function AIOverlay({ visible, onClose, onConfirm }: AIOverlayProp
           <BlurView intensity={40} tint="dark" style={styles.sheet}>
           <View style={styles.handle} />
 
-          <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            ref={scrollRef}
+            style={styles.content}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             {/* Conversation history */}
             {messages.map((msg, idx) => {
-              if (msg.role === 'assistant') return null; // Don't show raw JSON
+              if (msg.role === 'assistant') return null;
               return (
                 <View key={idx} style={styles.userBubble}>
                   <Text style={styles.userBubbleText}>{msg.content}</Text>
@@ -188,14 +267,32 @@ export default function AIOverlay({ visible, onClose, onConfirm }: AIOverlayProp
             )}
           </ScrollView>
 
+          {/* Listening indicator */}
+          {isListening && (
+            <View style={styles.listeningBar}>
+              <View style={styles.listeningDot} />
+              <Text style={styles.listeningText}>Listening...</Text>
+            </View>
+          )}
+
           {/* Input area */}
           <View style={styles.inputRow}>
+            {micSupported && (
+              <TouchableOpacity
+                style={[styles.micBtn, isListening && styles.micBtnActive]}
+                onPress={handleMicToggle}
+              >
+                <Text style={[styles.micIcon, isListening && styles.micIconActive]}>
+                  {isListening ? '■' : '🎙'}
+                </Text>
+              </TouchableOpacity>
+            )}
             <TextInput
               ref={inputRef}
               style={styles.input}
               value={input}
               onChangeText={setInput}
-              placeholder="Type or speak your workout..."
+              placeholder={isListening ? 'Speak your workout...' : 'Type or speak your workout...'}
               placeholderTextColor={colors.textTertiary}
               multiline
               maxLength={2000}
@@ -232,7 +329,7 @@ const styles = StyleSheet.create({
     maxHeight: '75%',
   },
   sheet: {
-    backgroundColor: 'rgba(20, 20, 20, 0.85)',
+    backgroundColor: 'rgba(18, 18, 18, 0.88)',
     paddingBottom: spacing.xl,
   },
   handle: {
@@ -250,17 +347,18 @@ const styles = StyleSheet.create({
   },
   userBubble: {
     alignSelf: 'flex-end',
-    backgroundColor: colors.surfaceLight,
-    borderRadius: 12,
+    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+    borderRadius: 14,
     borderBottomRightRadius: 4,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm + 2,
     marginBottom: spacing.sm,
     maxWidth: '85%',
   },
   userBubbleText: {
     color: colors.text,
     fontSize: fontSize.sm,
+    lineHeight: 18,
   },
   processingContainer: {
     flexDirection: 'row',
@@ -325,8 +423,8 @@ const styles = StyleSheet.create({
   confirmBtn: {
     flex: 1,
     backgroundColor: colors.accent,
-    borderRadius: 8,
-    paddingVertical: 10,
+    borderRadius: 10,
+    paddingVertical: 11,
     alignItems: 'center',
   },
   confirmBtnText: {
@@ -335,9 +433,9 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
   },
   editBtn: {
-    paddingVertical: 10,
+    paddingVertical: 11,
     paddingHorizontal: spacing.lg,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
@@ -346,6 +444,28 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: fontSize.md,
   },
+  listeningBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  listeningDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.red,
+  },
+  listeningText: {
+    color: colors.red,
+    fontSize: fontSize.xs,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -353,12 +473,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
   },
+  micBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.surfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  micBtnActive: {
+    backgroundColor: colors.redMuted,
+    borderColor: colors.red,
+  },
+  micIcon: {
+    fontSize: 18,
+  },
+  micIconActive: {
+    color: colors.red,
+    fontSize: 14,
+  },
   input: {
     flex: 1,
     backgroundColor: colors.surfaceLight,
-    borderRadius: 12,
+    borderRadius: 14,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm + 2,
     color: colors.text,
     fontSize: fontSize.md,
     maxHeight: 120,

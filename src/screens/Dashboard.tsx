@@ -226,7 +226,7 @@ export default function Dashboard() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Heatmap
           data={heatmapData}
           selectedDate={selectedDate}
