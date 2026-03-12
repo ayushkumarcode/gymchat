@@ -111,7 +111,7 @@ function computeTrends(workouts: Workout[]): LiftTrend[] {
     const weeks = Math.max(1, Math.round((new Date(sorted[sorted.length - 1].date).getTime() - new Date(sorted[0].date).getTime()) / (7 * 24 * 60 * 60 * 1000)));
 
     trends.push({
-      name: name.length > 12 ? name.split(' ')[0] : name,
+      name: name.length > 16 ? name.split(' ').slice(0, 2).join(' ') : name,
       currentWeight: current,
       unit,
       delta: current - oldest,
@@ -544,8 +544,8 @@ export default function Dashboard() {
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { paddingHorizontal: spacing.md }]}>Trends</Text>
             <View style={styles.trendsContainer}>
-              {trends.map((trend) => (
-                <TrendRow key={trend.name} trend={trend} />
+              {trends.map((trend, idx) => (
+                <TrendRow key={trend.name} trend={trend} isLast={idx === trends.length - 1} />
               ))}
             </View>
           </View>

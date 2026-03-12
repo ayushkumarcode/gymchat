@@ -31,12 +31,12 @@ function Sparkline({ data }: { data: number[] }) {
   );
 }
 
-export default function TrendRow({ trend }: TrendRowProps) {
+export default function TrendRow({ trend, isLast }: TrendRowProps & { isLast?: boolean }) {
   const sign = trend.delta >= 0 ? '+' : '';
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.name}>{trend.name}</Text>
+    <View style={[styles.container, !isLast && styles.containerBorder]}>
+      <Text style={styles.name} numberOfLines={1}>{trend.name}</Text>
       <Sparkline data={trend.sparkline} />
       <Text style={styles.current}>
         {trend.currentWeight}{trend.unit}
@@ -53,13 +53,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm + 2,
+  },
+  containerBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   name: {
     color: colors.textSecondary,
     fontSize: fontSize.sm,
     fontWeight: '500',
-    width: 50,
+    width: 70,
   },
   sparkline: {
     color: colors.accent,
