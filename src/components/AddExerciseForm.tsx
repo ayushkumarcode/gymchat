@@ -1,19 +1,30 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useRef, useMemo } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { colors, spacing, fontSize } from '../utils/theme';
 import { Exercise, ExerciseSet } from '../types/workout';
 
 interface AddExerciseFormProps {
   onAdd: (exercise: Exercise) => void;
   onCancel: () => void;
+  exerciseHistory?: string[];
+  weightUnit?: 'lb' | 'kg';
 }
 
-export default function AddExerciseForm({ onAdd, onCancel }: AddExerciseFormProps) {
+export default function AddExerciseForm({ onAdd, onCancel, exerciseHistory = [], weightUnit = 'lb' }: AddExerciseFormProps) {
   const [name, setName] = useState('');
   const [sets, setSets] = useState('3');
   const [reps, setReps] = useState('10');
   const [weight, setWeight] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const nameRef = useRef<TextInput>(null);
+
+  const suggestions = useMemo(() => {
+    if (!name.trim() || name.trim().length < 1) return [];
+    const query = name.toLowerCase();
+    return exerciseHistory
+      .filter((ex) => ex.toLowerCase().includes(query))
+      .slice(0, 5);
+  }, [name, exerciseHistory]);
 
   const handleAdd = () => {
     if (!name.trim()) return;
@@ -32,23 +43,48 @@ export default function AddExerciseForm({ onAdd, onCancel }: AddExerciseFormProp
       id: `ex-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       name: name.trim(),
       sets: exerciseSets,
-      weightUnit: 'lb',
+      weightUnit,
     };
 
     onAdd(exercise);
   };
 
+  const handleSelectSuggestion = (suggestion: string) => {
+    setName(suggestion);
+    setShowSuggestions(false);
+  };
+
   return (
     <View style={styles.container}>
-      <TextInput
-        ref={nameRef}
-        style={styles.nameInput}
-        value={name}
-        onChangeText={setName}
-        placeholder="Exercise name"
-        placeholderTextColor={colors.textTertiary}
-        autoFocus
-      />
+      <View>
+        <TextInput
+          ref={nameRef}
+          style={styles.nameInput}
+          value={name}
+          onChangeText={(text) => {
+            setName(text);
+            setShowSuggestions(true);
+          }}
+          placeholder="Exercise name"
+          placeholderTextColor={colors.textTertiary}
+          autoFocus
+          onFocus={() => setShowSuggestions(true)}
+          onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+        />
+        {showSuggestions && suggestions.length > 0 && (
+          <View style={styles.suggestionsContainer}>
+            {suggestions.map((s, idx) => (
+              <TouchableOpacity
+                key={idx}
+                style={[styles.suggestionItem, idx < suggestions.length - 1 && styles.suggestionBorder]}
+                onPress={() => handleSelectSuggestion(s)}
+              >
+                <Text style={styles.suggestionText}>{s}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </View>
 
       <View style={styles.fieldsRow}>
         <View style={styles.field}>
@@ -122,6 +158,27 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: spacing.sm,
+  },
+  suggestionsContainer: {
+    backgroundColor: colors.surfaceLight,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.sm,
+    marginTop: -spacing.sm + 2,
+    overflow: 'hidden',
+  },
+  suggestionItem: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  suggestionBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  suggestionText: {
+    color: colors.text,
+    fontSize: fontSize.sm,
   },
   fieldsRow: {
     flexDirection: 'row',

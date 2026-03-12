@@ -231,6 +231,17 @@ export default function Dashboard() {
     return map;
   }, [workouts]);
 
+  // Unique exercise names for autocomplete
+  const exerciseHistory = useMemo(() => {
+    const names = new Set<string>();
+    for (const w of workouts) {
+      for (const ex of w.exercises) {
+        names.add(ex.name);
+      }
+    }
+    return Array.from(names).sort();
+  }, [workouts]);
+
   const selectedWorkout = workouts.find((w) => w.date === selectedDate);
   const isToday = selectedDate === getTodayStr();
 
@@ -568,6 +579,8 @@ export default function Dashboard() {
                 <AddExerciseForm
                   onAdd={handleAddExerciseManual}
                   onCancel={() => setShowAddExercise(false)}
+                  exerciseHistory={exerciseHistory}
+                  weightUnit={settings.weightUnit}
                 />
               ) : isToday ? (
                 <TouchableOpacity
@@ -591,6 +604,8 @@ export default function Dashboard() {
                 <AddExerciseForm
                   onAdd={handleAddExerciseManual}
                   onCancel={() => setShowAddExercise(false)}
+                  exerciseHistory={exerciseHistory}
+                  weightUnit={settings.weightUnit}
                 />
               ) : (
                 <View style={styles.emptyState}>
