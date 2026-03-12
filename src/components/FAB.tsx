@@ -1,6 +1,7 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { Text, StyleSheet } from 'react-native';
 import { colors, spacing } from '../utils/theme';
+import AnimatedPressable from './AnimatedPressable';
 
 interface FABProps {
   onPress: () => void;
@@ -8,9 +9,9 @@ interface FABProps {
 
 export default function FAB({ onPress }: FABProps) {
   return (
-    <TouchableOpacity style={styles.fab} onPress={onPress} activeOpacity={0.8}>
+    <AnimatedPressable style={styles.fab} onPress={onPress} scale={0.9}>
       <Text style={styles.icon}>✦</Text>
-    </TouchableOpacity>
+    </AnimatedPressable>
   );
 }
 

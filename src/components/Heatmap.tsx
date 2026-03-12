@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, LayoutChangeEvent } from 'react-native';
 import { colors, spacing, fontSize } from '../utils/theme';
 import { DayData } from '../types/workout';
+import AnimatedPressable from './AnimatedPressable';
 
 interface HeatmapProps {
   data: DayData[];
@@ -98,9 +99,10 @@ export default function Heatmap({ data, selectedDate, onSelectDate, monthLabel, 
             const selected = selectedDate === day.date;
             const today = isToday(day.date);
             return (
-              <TouchableOpacity
+              <AnimatedPressable
                 key={day.date}
                 onPress={() => onSelectDate(day.date)}
+                scale={0.92}
                 style={[
                   styles.cell,
                   { width: cellSize, height: cellSize, backgroundColor: getIntensityColor(day.intensity) },
@@ -115,7 +117,7 @@ export default function Heatmap({ data, selectedDate, onSelectDate, monthLabel, 
                 ]}>
                   {new Date(day.date + 'T00:00:00').getDate()}
                 </Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
             );
           })}
         </View>
