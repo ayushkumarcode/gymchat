@@ -1,13 +1,14 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { colors, spacing, fontSize } from '../utils/theme';
 import { Workout, Exercise, DayData, LiftTrend } from '../types/workout';
-import { loadWorkouts, saveWorkouts } from '../utils/storage';
+import { loadWorkouts, saveWorkouts, loadSettings, AppSettings } from '../utils/storage';
 import Heatmap from '../components/Heatmap';
 import WorkoutTable from '../components/WorkoutTable';
 import TrendRow from '../components/TrendRow';
 import FAB from '../components/FAB';
+import SettingsSheet from '../components/SettingsSheet';
 import AIOverlay from '../components/AIOverlay';
 
 function getTodayStr(): string {
@@ -84,12 +85,15 @@ export default function Dashboard() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(getTodayStr());
   const [overlayVisible, setOverlayVisible] = useState(false);
+  const [settingsVisible, setSettingsVisible] = useState(false);
+  const [settings, setSettings] = useState<AppSettings>({ weightUnit: 'lb', userName: '' });
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load workouts from storage on mount
+  // Load workouts and settings from storage on mount
   useEffect(() => {
-    loadWorkouts().then((stored) => {
+    Promise.all([loadWorkouts(), loadSettings()]).then(([stored, storedSettings]) => {
       setWorkouts(stored);
+      setSettings(storedSettings);
       setIsLoading(false);
     });
   }, []);
@@ -171,6 +175,9 @@ export default function Dashboard() {
 
       <View style={styles.header}>
         <Text style={styles.title}>GymChat</Text>
+        <TouchableOpacity onPress={() => setSettingsVisible(true)} style={styles.settingsBtn}>
+          <Text style={styles.settingsIcon}>&#9881;</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
@@ -236,6 +243,14 @@ export default function Dashboard() {
         onClose={() => setOverlayVisible(false)}
         onConfirm={handleConfirmWorkout}
       />
+
+      <SettingsSheet
+        visible={settingsVisible}
+        onClose={() => setSettingsVisible(false)}
+        settings={settings}
+        onSettingsChange={setSettings}
+        workouts={workouts}
+      />
     </SafeAreaView>
   );
 }
@@ -256,6 +271,13 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: fontSize.xl,
     fontWeight: '700',
+  },
+  settingsBtn: {
+    padding: spacing.sm,
+  },
+  settingsIcon: {
+    color: colors.textSecondary,
+    fontSize: 22,
   },
   scroll: {
     flex: 1,
