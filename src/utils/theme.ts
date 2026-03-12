@@ -1,21 +1,21 @@
 export const colors = {
   bg: '#0A0A0A',
   surface: '#141414',
-  surfaceLight: '#1E1E1E',
-  border: '#2A2A2A',
-  text: '#FAFAFA',
-  textSecondary: '#888888',
-  textTertiary: '#555555',
+  surfaceLight: '#1A1A1A',
+  border: '#262626',
+  text: '#F5F5F5',
+  textSecondary: '#8A8A8A',
+  textTertiary: '#4A4A4A',
   accent: '#22C55E', // green — matches heatmap, gym energy
   accentDim: '#16A34A',
-  accentMuted: 'rgba(34, 197, 94, 0.15)',
+  accentMuted: 'rgba(34, 197, 94, 0.12)',
   red: '#EF4444',
   redMuted: 'rgba(239, 68, 68, 0.15)',
-  heatmap0: '#1E1E1E', // no workout
+  heatmap0: '#161616', // no workout
   heatmap1: '#14532D', // light
   heatmap2: '#166534', // moderate
   heatmap3: '#22C55E', // full
-  overlay: 'rgba(10, 10, 10, 0.6)',
+  overlay: 'rgba(0, 0, 0, 0.65)',
 } as const;
 
 export const spacing = {

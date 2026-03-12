@@ -217,7 +217,10 @@ export default function Dashboard() {
       <StatusBar style="light" />
 
       <View style={styles.header}>
-        <Text style={styles.title}>GymChat</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>Gym</Text>
+          <Text style={styles.titleAccent}>Chat</Text>
+        </View>
         <TouchableOpacity onPress={() => setSettingsVisible(true)} style={styles.settingsBtn}>
           <Text style={styles.settingsIcon}>&#9881;</Text>
         </TouchableOpacity>
@@ -257,9 +260,12 @@ export default function Dashboard() {
             ))
           ) : (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>No workout</Text>
+              <Text style={styles.emptyIcon}>{isToday ? '✦' : '—'}</Text>
+              <Text style={styles.emptyText}>
+                {isToday ? 'No workout yet' : 'Rest day'}
+              </Text>
               <Text style={styles.emptySubtext}>
-                {isToday ? 'Tap + to log your workout' : 'Rest day'}
+                {isToday ? 'Tap ✦ to log your workout' : 'No workout recorded'}
               </Text>
             </View>
           )}
@@ -310,18 +316,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   title: {
     color: colors.text,
     fontSize: fontSize.xl,
     fontWeight: '700',
+    letterSpacing: -0.5,
+  },
+  titleAccent: {
+    color: colors.accent,
+    fontSize: fontSize.xl,
+    fontWeight: '700',
+    letterSpacing: -0.5,
   },
   settingsBtn: {
     padding: spacing.sm,
   },
   settingsIcon: {
-    color: colors.textSecondary,
+    color: colors.textTertiary,
     fontSize: 22,
   },
   scroll: {
@@ -344,6 +362,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: fontSize.md,
     fontWeight: '600',
+    letterSpacing: -0.2,
   },
   notesBadge: {
     marginHorizontal: spacing.md,
@@ -360,11 +379,18 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: spacing.xl,
+    paddingVertical: spacing.xl + spacing.md,
+  },
+  emptyIcon: {
+    color: colors.textTertiary,
+    fontSize: 32,
+    marginBottom: spacing.sm,
+    opacity: 0.5,
   },
   emptyText: {
     color: colors.textSecondary,
     fontSize: fontSize.md,
+    fontWeight: '500',
   },
   emptySubtext: {
     color: colors.textTertiary,

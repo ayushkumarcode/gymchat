@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, LayoutChangeEvent } from 'react-native';
 import { colors, spacing, fontSize } from '../utils/theme';
 import { DayData } from '../types/workout';
 
@@ -9,8 +9,7 @@ interface HeatmapProps {
   onSelectDate: (date: string) => void;
 }
 
-const CELL_SIZE = 36;
-const CELL_GAP = 4;
+const CELL_GAP = 5;
 const DAY_LABELS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
 function getIntensityColor(intensity: 0 | 1 | 2 | 3): string {
@@ -34,6 +33,8 @@ function isToday(dateStr: string): boolean {
 }
 
 export default function Heatmap({ data, selectedDate, onSelectDate }: HeatmapProps) {
+  const [containerWidth, setContainerWidth] = useState(0);
+
   if (data.length === 0) return null;
 
   const monthLabel = getMonthName(data[0].date);
@@ -58,13 +59,24 @@ export default function Heatmap({ data, selectedDate, onSelectDate }: HeatmapPro
     weeks.push(currentWeek);
   }
 
+  // 7 cells with 6 gaps between them
+  const cellSize = containerWidth > 0
+    ? Math.floor((containerWidth - CELL_GAP * 6) / 7)
+    : 36;
+
+  const handleLayout = (e: LayoutChangeEvent) => {
+    setContainerWidth(e.nativeEvent.layout.width);
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={styles.container} onLayout={handleLayout}>
       <Text style={styles.monthLabel}>{monthLabel}</Text>
 
       <View style={styles.dayLabelsRow}>
         {DAY_LABELS.map((label) => (
-          <Text key={label} style={styles.dayLabel}>{label}</Text>
+          <Text key={label} style={[styles.dayLabel, { width: cellSize }]}>
+            {label}
+          </Text>
         ))}
       </View>
 
@@ -72,7 +84,7 @@ export default function Heatmap({ data, selectedDate, onSelectDate }: HeatmapPro
         <View key={wi} style={styles.weekRow}>
           {week.map((day, di) => {
             if (!day) {
-              return <View key={`empty-${di}`} style={styles.emptyCell} />;
+              return <View key={`empty-${di}`} style={[styles.emptyCell, { width: cellSize, height: cellSize }]} />;
             }
             const selected = selectedDate === day.date;
             const today = isToday(day.date);
@@ -82,7 +94,7 @@ export default function Heatmap({ data, selectedDate, onSelectDate }: HeatmapPro
                 onPress={() => onSelectDate(day.date)}
                 style={[
                   styles.cell,
-                  { backgroundColor: getIntensityColor(day.intensity) },
+                  { width: cellSize, height: cellSize, backgroundColor: getIntensityColor(day.intensity) },
                   selected && styles.cellSelected,
                   today && !selected && styles.cellToday,
                 ]}
@@ -90,6 +102,7 @@ export default function Heatmap({ data, selectedDate, onSelectDate }: HeatmapPro
                 <Text style={[
                   styles.cellText,
                   day.intensity > 0 && styles.cellTextActive,
+                  selected && styles.cellTextSelected,
                 ]}>
                   {new Date(day.date + 'T00:00:00').getDate()}
                 </Text>
@@ -105,56 +118,58 @@ export default function Heatmap({ data, selectedDate, onSelectDate }: HeatmapPro
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm,
   },
   monthLabel: {
-    color: colors.text,
-    fontSize: fontSize.lg,
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
     fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
     marginBottom: spacing.sm,
   },
   dayLabelsRow: {
     flexDirection: 'row',
-    marginBottom: spacing.xs,
+    justifyContent: 'space-between',
+    marginBottom: CELL_GAP,
   },
   dayLabel: {
-    width: CELL_SIZE,
-    marginRight: CELL_GAP,
     textAlign: 'center',
     color: colors.textTertiary,
     fontSize: fontSize.xs,
+    fontWeight: '500',
   },
   weekRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: CELL_GAP,
   },
   cell: {
-    width: CELL_SIZE,
-    height: CELL_SIZE,
-    borderRadius: 6,
-    marginRight: CELL_GAP,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emptyCell: {
-    width: CELL_SIZE,
-    height: CELL_SIZE,
-    marginRight: CELL_GAP,
-  },
+  emptyCell: {},
   cellSelected: {
     borderWidth: 2,
     borderColor: colors.accent,
   },
   cellToday: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.textTertiary,
   },
   cellText: {
     color: colors.textTertiary,
-    fontSize: fontSize.xs,
+    fontSize: fontSize.sm,
     fontWeight: '500',
+    fontVariant: ['tabular-nums'],
   },
   cellTextActive: {
+    color: colors.text,
+    fontWeight: '600',
+  },
+  cellTextSelected: {
     color: colors.text,
   },
 });

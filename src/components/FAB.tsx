@@ -9,7 +9,7 @@ interface FABProps {
 export default function FAB({ onPress }: FABProps) {
   return (
     <TouchableOpacity style={styles.fab} onPress={onPress} activeOpacity={0.8}>
-      <Text style={styles.icon}>+</Text>
+      <Text style={styles.icon}>✦</Text>
     </TouchableOpacity>
   );
 }
@@ -17,24 +17,23 @@ export default function FAB({ onPress }: FABProps) {
 const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
-    bottom: 32,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    bottom: 36,
+    right: 20,
+    width: 58,
+    height: 58,
+    borderRadius: 18,
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
     elevation: 8,
   },
   icon: {
     color: colors.bg,
-    fontSize: 28,
-    fontWeight: '300',
-    marginTop: -2,
+    fontSize: 22,
+    fontWeight: '600',
   },
 });
