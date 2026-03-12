@@ -211,6 +211,23 @@ export default function Dashboard() {
     return map;
   }, [workouts, selectedDate]);
 
+  // Build PR (personal record) map: exercise name → best weight achieved
+  const prMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const w of workouts) {
+      for (const ex of w.exercises) {
+        const key = ex.name;
+        for (const s of ex.sets) {
+          if (s.isWarmup) continue;
+          if (!map[key] || s.weight > map[key]) {
+            map[key] = s.weight;
+          }
+        }
+      }
+    }
+    return map;
+  }, [workouts]);
+
   const selectedWorkout = workouts.find((w) => w.date === selectedDate);
   const isToday = selectedDate === getTodayStr();
 
@@ -488,6 +505,7 @@ export default function Dashboard() {
                   key={exercise.id}
                   exercise={exercise}
                   previousExercise={previousExerciseMap[exercise.id]}
+                  prWeight={prMap[exercise.name]}
                   onUpdateSet={handleUpdateSet}
                   onAddSet={handleAddSet}
                   onDeleteSet={handleDeleteSet}

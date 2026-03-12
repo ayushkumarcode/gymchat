@@ -6,13 +6,14 @@ import { Exercise, ExerciseSet } from '../types/workout';
 interface WorkoutTableProps {
   exercise: Exercise;
   previousExercise?: Exercise;
+  prWeight?: number;
   onUpdateSet?: (exerciseId: string, setIndex: number, field: 'reps' | 'weight', value: number) => void;
   onAddSet?: (exerciseId: string) => void;
   onDeleteSet?: (exerciseId: string, setIndex: number) => void;
   onDeleteExercise?: (exerciseId: string) => void;
 }
 
-export default function WorkoutTable({ exercise, previousExercise, onUpdateSet, onAddSet, onDeleteSet, onDeleteExercise }: WorkoutTableProps) {
+export default function WorkoutTable({ exercise, previousExercise, prWeight, onUpdateSet, onAddSet, onDeleteSet, onDeleteExercise }: WorkoutTableProps) {
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
 
@@ -159,9 +160,16 @@ export default function WorkoutTable({ exercise, previousExercise, onUpdateSet, 
                   style={styles.colWeight}
                   onPress={() => handleStartEdit(idx, 'weight', set.weight)}
                 >
-                  <Text style={styles.cell}>
-                    {set.weight > 0 ? set.weight : '-'}
-                  </Text>
+                  <View style={styles.weightCell}>
+                    <Text style={styles.cell}>
+                      {set.weight > 0 ? set.weight : '-'}
+                    </Text>
+                    {!set.isWarmup && set.weight > 0 && prWeight !== undefined && set.weight >= prWeight && (
+                      <View style={styles.prBadge}>
+                        <Text style={styles.prText}>PR</Text>
+                      </View>
+                    )}
+                  </View>
                 </TouchableOpacity>
               )}
             </View>
@@ -290,6 +298,25 @@ const styles = StyleSheet.create({
   },
   deltaDown: {
     color: colors.red,
+  },
+  weightCell: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  prBadge: {
+    backgroundColor: 'rgba(234, 179, 8, 0.15)',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(234, 179, 8, 0.3)',
+  },
+  prText: {
+    color: '#EAB308',
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   addSetBtn: {
     paddingVertical: spacing.sm,
