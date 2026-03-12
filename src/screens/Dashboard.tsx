@@ -399,6 +399,17 @@ export default function Dashboard() {
             </Text>
           </View>
 
+          {selectedWorkout && (() => {
+            const totalSets = selectedWorkout.exercises.reduce((sum, ex) => sum + ex.sets.filter(s => !s.isWarmup).length, 0);
+            const totalReps = selectedWorkout.exercises.reduce((sum, ex) => sum + ex.sets.filter(s => !s.isWarmup).reduce((r, s) => r + s.reps, 0), 0);
+            const totalVolume = selectedWorkout.exercises.reduce((sum, ex) => sum + ex.sets.filter(s => !s.isWarmup).reduce((v, s) => v + s.weight * s.reps, 0), 0);
+            return (
+              <Text style={styles.volumeSummary}>
+                {totalSets} sets · {totalReps} reps{totalVolume > 0 ? ` · ${totalVolume.toLocaleString()} lb` : ''}
+              </Text>
+            );
+          })()}
+
           {selectedWorkout?.notes && (
             <View style={styles.notesBadge}>
               <Text style={styles.notesText}>{selectedWorkout.notes}</Text>
@@ -569,6 +580,13 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     fontWeight: '600',
     letterSpacing: -0.2,
+  },
+  volumeSummary: {
+    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    fontVariant: ['tabular-nums'],
   },
   notesBadge: {
     marginHorizontal: spacing.md,
