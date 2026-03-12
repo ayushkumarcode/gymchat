@@ -619,11 +619,20 @@ export default function Dashboard() {
                 <View style={styles.emptyState}>
                   <Text style={styles.emptyIcon}>{isToday ? '✦' : '—'}</Text>
                   <Text style={styles.emptyText}>
-                    {isToday ? 'No workout yet' : 'Rest day'}
+                    {isToday ? (workouts.length === 0 ? 'Welcome to GymChat' : 'No workout yet') : 'Rest day'}
                   </Text>
-                  <Text style={styles.emptySubtext}>
-                    {isToday ? 'Tap ✦ to log your workout' : 'No workout recorded'}
-                  </Text>
+                  {isToday && workouts.length === 0 ? (
+                    <View style={styles.onboardingSteps}>
+                      <Text style={styles.onboardingStep}>1. Tap the <Text style={styles.onboardingAccent}>✦</Text> button below</Text>
+                      <Text style={styles.onboardingStep}>2. Describe your workout naturally</Text>
+                      <Text style={styles.onboardingStep}>3. AI parses it into structured data</Text>
+                      <Text style={styles.onboardingHint}>"bench 185 3x8, incline db 50 3x10"</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.emptySubtext}>
+                      {isToday ? 'Tap ✦ to log your workout' : 'No workout recorded'}
+                    </Text>
+                  )}
                   {isToday && (
                     <TouchableOpacity
                       style={styles.manualAddBtn}
@@ -879,6 +888,26 @@ const styles = StyleSheet.create({
   emptySubtext: {
     color: colors.textTertiary,
     fontSize: fontSize.sm,
+    marginTop: spacing.xs,
+  },
+  onboardingSteps: {
+    marginTop: spacing.md,
+    gap: spacing.sm,
+    alignItems: 'flex-start',
+  },
+  onboardingStep: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    lineHeight: 20,
+  },
+  onboardingAccent: {
+    color: colors.accent,
+    fontWeight: '600',
+  },
+  onboardingHint: {
+    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    fontStyle: 'italic',
     marginTop: spacing.xs,
   },
   repeatBtn: {
