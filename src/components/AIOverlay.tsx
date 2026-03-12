@@ -259,6 +259,9 @@ export default function AIOverlay({ visible, onClose, onConfirm, weightUnit = 'l
                     <Text style={styles.parsedLabel}>
                       {parsed.label || 'Workout'}
                     </Text>
+                    <Text style={styles.parsedSummary}>
+                      {parsed.exercises.length} exercise{parsed.exercises.length > 1 ? 's' : ''} · {parsed.exercises.reduce((sum, ex) => sum + ex.sets.filter(s => !s.isWarmup).length, 0)} sets · {parsed.exercises.reduce((sum, ex) => sum + ex.sets.filter(s => !s.isWarmup).reduce((r, s) => r + s.reps, 0), 0)} reps
+                    </Text>
                     {parsed.exercises.map((ex) => (
                       <View key={ex.id} style={styles.parsedExercise}>
                         <Text style={styles.parsedExName}>
@@ -436,7 +439,13 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: fontSize.md,
     fontWeight: '600',
+    marginBottom: 2,
+  },
+  parsedSummary: {
+    color: colors.textTertiary,
+    fontSize: fontSize.xs,
     marginBottom: spacing.sm,
+    fontVariant: ['tabular-nums'],
   },
   parsedExercise: {
     marginBottom: spacing.sm,

@@ -676,6 +676,14 @@ export default function Dashboard() {
           setWorkouts([]);
           saveWorkouts([]);
         }}
+        onImportData={(imported) => {
+          // Merge: add imported workouts that don't already exist by date
+          const existingDates = new Set(workouts.map((w) => w.date));
+          const newWorkouts = imported.filter((w) => !existingDates.has(w.date));
+          const merged = [...workouts, ...newWorkouts];
+          setWorkouts(merged);
+          saveWorkouts(merged);
+        }}
       />
     </SafeAreaView>
   );

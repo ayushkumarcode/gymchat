@@ -21,6 +21,7 @@ interface SettingsSheetProps {
   onSettingsChange: (settings: AppSettings) => void;
   workouts: Workout[];
   onClearData?: () => void;
+  onImportData?: (workouts: Workout[]) => void;
 }
 
 function workoutsToCSV(workouts: Workout[]): string {
@@ -49,7 +50,7 @@ function workoutsToCSV(workouts: Workout[]): string {
   return rows.join('\n');
 }
 
-export default function SettingsSheet({ visible, onClose, settings, onSettingsChange, workouts, onClearData }: SettingsSheetProps) {
+export default function SettingsSheet({ visible, onClose, settings, onSettingsChange, workouts, onClearData, onImportData }: SettingsSheetProps) {
   const [name, setName] = useState(settings.userName);
   const [unit, setUnit] = useState(settings.weightUnit);
 
@@ -107,6 +108,37 @@ export default function SettingsSheet({ visible, onClose, settings, onSettingsCh
       URL.revokeObjectURL(url);
     } else {
       Alert.alert('Export', `${workouts.length} workouts ready for export. CSV sharing coming soon.`);
+    }
+  };
+
+  const handleImportJSON = () => {
+    if (Platform.OS === 'web') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.onchange = (e: any) => {
+        const file = e.target?.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const data = JSON.parse(ev.target?.result as string);
+            if (Array.isArray(data) && data.length > 0) {
+              if (confirm(`Import ${data.length} workouts? This will merge with existing data.`)) {
+                onImportData?.(data);
+              }
+            } else {
+              alert('Invalid backup file. Expected an array of workouts.');
+            }
+          } catch {
+            alert('Failed to parse JSON file.');
+          }
+        };
+        reader.readAsText(file);
+      };
+      input.click();
+    } else {
+      Alert.alert('Import', 'JSON import is available on web only for now.');
     }
   };
 
@@ -178,6 +210,12 @@ export default function SettingsSheet({ visible, onClose, settings, onSettingsCh
                 <Text style={styles.exportBtnText}>Backup JSON</Text>
               </TouchableOpacity>
             </View>
+
+            {onImportData && (
+              <TouchableOpacity style={styles.importBtn} onPress={handleImportJSON}>
+                <Text style={styles.importBtnText}>Import JSON backup</Text>
+              </TouchableOpacity>
+            )}
 
             {onClearData && workouts.length > 0 && (
               <TouchableOpacity style={styles.clearBtn} onPress={handleClearData}>
@@ -301,6 +339,20 @@ const styles = StyleSheet.create({
   exportBtnText: {
     color: colors.text,
     fontSize: fontSize.md,
+  },
+  importBtn: {
+    backgroundColor: colors.surfaceLight,
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+  },
+  importBtnText: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
   },
   clearBtn: {
     borderRadius: 8,
