@@ -12,6 +12,7 @@
     "@anthropic-ai/sdk": "^0.78.0",
     "@expo/metro-runtime": "~55.0.6",
     "expo": "~55.0.6",
+    "expo-blur": "^55.0.9",
     "expo-constants": "^55.0.7",
     "expo-status-bar": "~55.0.4",
     "react": "19.2.0",
