@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity, Animated } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { colors, spacing, fontSize } from '../utils/theme';
 import { Workout, Exercise, DayData, LiftTrend } from '../types/workout';
@@ -131,6 +131,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [viewYear, setViewYear] = useState(new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(new Date().getMonth());
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   // Load workouts and settings from storage on mount
   useEffect(() => {
@@ -138,6 +139,11 @@ export default function Dashboard() {
       setWorkouts(stored);
       setSettings(storedSettings);
       setIsLoading(false);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
     });
   }, []);
 
@@ -315,6 +321,24 @@ export default function Dashboard() {
     setSelectedDate(today);
   };
 
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <StatusBar style="light" />
+        <View style={styles.header}>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>Gym</Text>
+            <Text style={styles.titleAccent}>Chat</Text>
+          </View>
+        </View>
+        <View style={styles.loadingContainer}>
+          <View style={styles.skeletonBlock} />
+          <View style={[styles.skeletonBlock, { width: '60%', height: 12 }]} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar style="light" />
@@ -329,6 +353,7 @@ export default function Dashboard() {
         </TouchableOpacity>
       </View>
 
+      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Stats bar */}
         {workouts.length > 0 && (
@@ -420,6 +445,7 @@ export default function Dashboard() {
         {/* Bottom padding for FAB */}
         <View style={{ height: 100 }} />
       </ScrollView>
+      </Animated.View>
 
       <FAB onPress={() => setOverlayVisible(true)} />
 
@@ -444,6 +470,18 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.bg,
+  },
+  loadingContainer: {
+    flex: 1,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xl,
+    gap: spacing.md,
+  },
+  skeletonBlock: {
+    height: 16,
+    width: '40%',
+    backgroundColor: colors.surface,
+    borderRadius: 8,
   },
   header: {
     flexDirection: 'row',
