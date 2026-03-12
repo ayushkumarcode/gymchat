@@ -1,9 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, StyleSheet, SafeAreaView } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { colors, spacing, fontSize } from '../utils/theme';
-import { Workout, Exercise } from '../types/workout';
-import { mockWorkouts, generateHeatmapData, mockTrends } from '../data/mock';
+import { Workout, Exercise, DayData, LiftTrend } from '../types/workout';
+import { loadWorkouts, saveWorkouts } from '../utils/storage';
 import Heatmap from '../components/Heatmap';
 import WorkoutTable from '../components/WorkoutTable';
 import TrendRow from '../components/TrendRow';
@@ -22,12 +22,89 @@ function formatDate(dateStr: string): string {
   return `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
 }
 
+function computeHeatmapData(workouts: Workout[]): DayData[] {
+  const days: DayData[] = [];
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const workout = workouts.find((w) => w.date === date);
+    let intensity: 0 | 1 | 2 | 3 = 0;
+    if (workout) {
+      const exerciseCount = workout.exercises.length;
+      if (exerciseCount >= 3) intensity = 3;
+      else if (exerciseCount >= 2) intensity = 2;
+      else intensity = 1;
+    }
+    days.push({ date, intensity, workout });
+  }
+  return days;
+}
+
+function computeTrends(workouts: Workout[]): LiftTrend[] {
+  // Find exercises that appear multiple times
+  const exerciseHistory: Record<string, { weight: number; date: string }[]> = {};
+
+  for (const w of workouts) {
+    for (const ex of w.exercises) {
+      const maxWeight = Math.max(...ex.sets.filter((s) => !s.isWarmup).map((s) => s.weight));
+      if (maxWeight > 0) {
+        if (!exerciseHistory[ex.name]) exerciseHistory[ex.name] = [];
+        exerciseHistory[ex.name].push({ weight: maxWeight, date: w.date });
+      }
+    }
+  }
+
+  const trends: LiftTrend[] = [];
+  for (const [name, history] of Object.entries(exerciseHistory)) {
+    if (history.length < 2) continue;
+    const sorted = history.sort((a, b) => a.date.localeCompare(b.date));
+    const current = sorted[sorted.length - 1].weight;
+    const oldest = sorted[0].weight;
+    const unit = workouts.find((w) => w.exercises.find((e) => e.name === name))?.exercises.find((e) => e.name === name)?.weightUnit || 'lb';
+    const weeks = Math.max(1, Math.round((new Date(sorted[sorted.length - 1].date).getTime() - new Date(sorted[0].date).getTime()) / (7 * 24 * 60 * 60 * 1000)));
+
+    trends.push({
+      name: name.length > 12 ? name.split(' ')[0] : name,
+      currentWeight: current,
+      unit,
+      delta: current - oldest,
+      period: `${weeks}w`,
+      sparkline: sorted.map((s) => s.weight),
+    });
+  }
+
+  return trends.slice(0, 5); // Top 5 exercises
+}
+
 export default function Dashboard() {
-  const [workouts, setWorkouts] = useState<Workout[]>(mockWorkouts);
+  const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(getTodayStr());
   const [overlayVisible, setOverlayVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const heatmapData = useMemo(() => generateHeatmapData(), [workouts]);
+  // Load workouts from storage on mount
+  useEffect(() => {
+    loadWorkouts().then((stored) => {
+      setWorkouts(stored);
+      setIsLoading(false);
+    });
+  }, []);
+
+  // Save workouts whenever they change
+  const updateWorkouts = useCallback((updater: (prev: Workout[]) => Workout[]) => {
+    setWorkouts((prev) => {
+      const next = updater(prev);
+      saveWorkouts(next);
+      return next;
+    });
+  }, []);
+
+  const heatmapData = useMemo(() => computeHeatmapData(workouts), [workouts]);
+  const trends = useMemo(() => computeTrends(workouts), [workouts]);
 
   const selectedWorkout = workouts.find((w) => w.date === selectedDate);
   const isToday = selectedDate === getTodayStr();
@@ -37,7 +114,7 @@ export default function Dashboard() {
   };
 
   const handleUpdateSet = (exerciseId: string, setIndex: number, field: 'reps' | 'weight', value: number) => {
-    setWorkouts((prev) =>
+    updateWorkouts((prev) =>
       prev.map((w) => {
         if (w.date !== selectedDate) return w;
         return {
@@ -62,8 +139,7 @@ export default function Dashboard() {
     const existing = workouts.find((w) => w.date === today);
 
     if (existing) {
-      // Append exercises to today's workout
-      setWorkouts((prev) =>
+      updateWorkouts((prev) =>
         prev.map((w) => {
           if (w.date !== today) return w;
           return {
@@ -75,7 +151,6 @@ export default function Dashboard() {
         })
       );
     } else {
-      // Create new workout for today
       const newWorkout: Workout = {
         id: `w-${Date.now()}`,
         date: today,
@@ -84,7 +159,7 @@ export default function Dashboard() {
         exercises: parsed.exercises,
         createdAt: new Date().toISOString(),
       };
-      setWorkouts((prev) => [newWorkout, ...prev]);
+      updateWorkouts((prev) => [newWorkout, ...prev]);
     }
 
     setSelectedDate(today);
@@ -139,14 +214,16 @@ export default function Dashboard() {
         </View>
 
         {/* Trends */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { paddingHorizontal: spacing.md }]}>Trends</Text>
-          <View style={styles.trendsContainer}>
-            {mockTrends.map((trend) => (
-              <TrendRow key={trend.name} trend={trend} />
-            ))}
+        {trends.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { paddingHorizontal: spacing.md }]}>Trends</Text>
+            <View style={styles.trendsContainer}>
+              {trends.map((trend) => (
+                <TrendRow key={trend.name} trend={trend} />
+              ))}
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Bottom padding for FAB */}
         <View style={{ height: 100 }} />
