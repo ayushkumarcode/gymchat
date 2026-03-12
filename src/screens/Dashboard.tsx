@@ -3,7 +3,7 @@ import { View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity, Ani
 import { StatusBar } from 'expo-status-bar';
 import { colors, spacing, fontSize } from '../utils/theme';
 import { Workout, Exercise, DayData, LiftTrend } from '../types/workout';
-import { loadWorkouts, saveWorkouts, loadSettings, AppSettings } from '../utils/storage';
+import { loadWorkouts, saveWorkouts, loadSettings, saveSettings, AppSettings } from '../utils/storage';
 import Heatmap from '../components/Heatmap';
 import WorkoutTable from '../components/WorkoutTable';
 import TrendRow from '../components/TrendRow';
@@ -472,6 +472,10 @@ export default function Dashboard() {
         settings={settings}
         onSettingsChange={setSettings}
         workouts={workouts}
+        onClearData={() => {
+          setWorkouts([]);
+          saveWorkouts([]);
+        }}
       />
     </SafeAreaView>
   );

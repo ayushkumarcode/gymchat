@@ -20,6 +20,7 @@ interface SettingsSheetProps {
   settings: AppSettings;
   onSettingsChange: (settings: AppSettings) => void;
   workouts: Workout[];
+  onClearData?: () => void;
 }
 
 function workoutsToCSV(workouts: Workout[]): string {
@@ -48,7 +49,7 @@ function workoutsToCSV(workouts: Workout[]): string {
   return rows.join('\n');
 }
 
-export default function SettingsSheet({ visible, onClose, settings, onSettingsChange, workouts }: SettingsSheetProps) {
+export default function SettingsSheet({ visible, onClose, settings, onSettingsChange, workouts, onClearData }: SettingsSheetProps) {
   const [name, setName] = useState(settings.userName);
   const [unit, setUnit] = useState(settings.weightUnit);
 
@@ -62,6 +63,36 @@ export default function SettingsSheet({ visible, onClose, settings, onSettingsCh
     onSettingsChange(updated);
     saveSettings(updated);
     onClose();
+  };
+
+  const totalExercises = workouts.reduce((sum, w) => sum + w.exercises.length, 0);
+  const totalSets = workouts.reduce((sum, w) => sum + w.exercises.reduce((s, ex) => s + ex.sets.length, 0), 0);
+
+  const handleClearData = () => {
+    if (Platform.OS === 'web') {
+      if (confirm('Delete ALL workout data? This cannot be undone.')) {
+        if (confirm('Are you absolutely sure? All workouts will be permanently deleted.')) {
+          onClearData?.();
+          onClose();
+        }
+      }
+    } else {
+      Alert.alert(
+        'Delete all data',
+        'This will permanently delete all your workout data. This cannot be undone.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete everything',
+            style: 'destructive',
+            onPress: () => {
+              onClearData?.();
+              onClose();
+            },
+          },
+        ]
+      );
+    }
   };
 
   const handleExport = () => {
@@ -117,9 +148,22 @@ export default function SettingsSheet({ visible, onClose, settings, onSettingsCh
               </View>
             </View>
 
+            {/* Data section */}
+            <View style={styles.dataSection}>
+              <Text style={styles.dataSummary}>
+                {workouts.length} workouts · {totalExercises} exercises · {totalSets} sets
+              </Text>
+            </View>
+
             <TouchableOpacity style={styles.exportBtn} onPress={handleExport}>
               <Text style={styles.exportBtnText}>Export data (CSV)</Text>
             </TouchableOpacity>
+
+            {onClearData && workouts.length > 0 && (
+              <TouchableOpacity style={styles.clearBtn} onPress={handleClearData}>
+                <Text style={styles.clearBtnText}>Clear all data</Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
               <Text style={styles.saveBtnText}>Done</Text>
@@ -210,6 +254,16 @@ const styles = StyleSheet.create({
   unitBtnTextActive: {
     color: colors.bg,
   },
+  dataSection: {
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  dataSummary: {
+    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    textAlign: 'center',
+    fontVariant: ['tabular-nums'],
+  },
   exportBtn: {
     backgroundColor: colors.surfaceLight,
     borderRadius: 8,
@@ -222,6 +276,18 @@ const styles = StyleSheet.create({
   exportBtnText: {
     color: colors.text,
     fontSize: fontSize.md,
+  },
+  clearBtn: {
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.redMuted,
+  },
+  clearBtnText: {
+    color: colors.red,
+    fontSize: fontSize.sm,
   },
   saveBtn: {
     backgroundColor: colors.accent,
