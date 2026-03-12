@@ -47,6 +47,45 @@ function getMonthLabel(year: number, month: number): string {
   return d.toLocaleString('default', { month: 'long', year: 'numeric' });
 }
 
+function computeStats(workouts: Workout[]) {
+  const today = new Date();
+  const todayStr = getTodayStr();
+
+  // Current streak: consecutive days with workouts ending today (or yesterday if not yet worked out today)
+  const workoutDates = new Set(workouts.map((w) => w.date));
+  let streak = 0;
+  const checkDate = new Date(today);
+
+  // If no workout today, start checking from yesterday
+  if (!workoutDates.has(todayStr)) {
+    checkDate.setDate(checkDate.getDate() - 1);
+  }
+
+  while (true) {
+    const dateStr = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}-${String(checkDate.getDate()).padStart(2, '0')}`;
+    if (workoutDates.has(dateStr)) {
+      streak++;
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+
+  // This month count
+  const monthPrefix = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  const thisMonth = workouts.filter((w) => w.date.startsWith(monthPrefix)).length;
+
+  // This week count (Mon-Sun)
+  const dayOfWeek = today.getDay();
+  const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - mondayOffset);
+  const mondayStr = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+  const thisWeek = workouts.filter((w) => w.date >= mondayStr && w.date <= todayStr).length;
+
+  return { streak, thisMonth, thisWeek, total: workouts.length };
+}
+
 function computeTrends(workouts: Workout[]): LiftTrend[] {
   // Find exercises that appear multiple times
   const exerciseHistory: Record<string, { weight: number; date: string }[]> = {};
@@ -111,6 +150,7 @@ export default function Dashboard() {
     });
   }, []);
 
+  const stats = useMemo(() => computeStats(workouts), [workouts]);
   const heatmapData = useMemo(() => computeHeatmapData(workouts, viewYear, viewMonth), [workouts, viewYear, viewMonth]);
   const monthLabel = useMemo(() => getMonthLabel(viewYear, viewMonth), [viewYear, viewMonth]);
   const trends = useMemo(() => computeTrends(workouts), [workouts]);
@@ -266,6 +306,31 @@ export default function Dashboard() {
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Stats bar */}
+        {workouts.length > 0 && (
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{stats.streak}</Text>
+              <Text style={styles.statLabel}>streak</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{stats.thisWeek}</Text>
+              <Text style={styles.statLabel}>this week</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{stats.thisMonth}</Text>
+              <Text style={styles.statLabel}>this month</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{stats.total}</Text>
+              <Text style={styles.statLabel}>total</Text>
+            </View>
+          </View>
+        )}
+
         <Heatmap
           data={heatmapData}
           selectedDate={selectedDate}
@@ -385,6 +450,40 @@ const styles = StyleSheet.create({
   settingsIcon: {
     color: colors.textTertiary,
     fontSize: 22,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.xs,
+    backgroundColor: colors.surface,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statValue: {
+    color: colors.text,
+    fontSize: fontSize.lg,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
+  statLabel: {
+    color: colors.textTertiary,
+    fontSize: fontSize.xs,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  statDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: colors.border,
   },
   scroll: {
     flex: 1,
