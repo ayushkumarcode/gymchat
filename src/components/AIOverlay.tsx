@@ -296,6 +296,12 @@ export default function AIOverlay({ visible, onClose, onConfirm }: AIOverlayProp
               multiline
               maxLength={2000}
               returnKeyType="default"
+              onKeyPress={(e: any) => {
+                if (Platform.OS === 'web' && e.nativeEvent.key === 'Enter' && !e.nativeEvent.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
             />
             <TouchableOpacity
               style={[styles.sendBtn, (!input.trim() || isProcessing) && styles.sendBtnDisabled]}
