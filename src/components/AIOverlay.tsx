@@ -9,16 +9,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
-  Keyboard,
+  ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { colors, spacing, fontSize } from '../utils/theme';
 import { Exercise } from '../types/workout';
-
-interface ParsedWorkout {
-  label?: string;
-  notes?: string;
-  exercises: Exercise[];
-}
+import { parseWorkoutWithAI, ParsedWorkout } from '../utils/ai';
 
 interface AIOverlayProps {
   visible: boolean;
@@ -26,85 +22,16 @@ interface AIOverlayProps {
   onConfirm: (parsed: ParsedWorkout) => void;
 }
 
-// Mock AI parsing — will be replaced with Claude API
-function mockParseWorkout(text: string): { parsed: ParsedWorkout; question?: string } {
-  const lower = text.toLowerCase();
-
-  const exercises: Exercise[] = [];
-
-  // Simple mock: detect "bench" mention
-  if (lower.includes('bench')) {
-    const benchContext = lower.split('bench')[1]?.split(/then|,/)[0] || '';
-    const weightMatch = benchContext.match(/(\d+)\s*(?:lb|kg|for)?/);
-    exercises.push({
-      id: `e-${Date.now()}-1`,
-      name: 'Bench Press',
-      variant: benchContext.includes('incline') ? 'incline' : 'flat',
-      weightUnit: benchContext.includes('kg') ? 'kg' : 'lb',
-      sets: [
-        { setNumber: 1, reps: 8, weight: weightMatch ? parseInt(weightMatch[1]) : 135 },
-        { setNumber: 2, reps: 8, weight: weightMatch ? parseInt(weightMatch[1]) : 135 },
-        { setNumber: 3, reps: 7, weight: weightMatch ? parseInt(weightMatch[1]) : 135 },
-      ],
-    });
-  }
-
-  if (lower.includes('squat')) {
-    exercises.push({
-      id: `e-${Date.now()}-2`,
-      name: 'Squat',
-      weightUnit: lower.includes('kg') ? 'kg' : 'lb',
-      sets: [
-        { setNumber: 1, reps: 5, weight: 225 },
-        { setNumber: 2, reps: 5, weight: 225 },
-        { setNumber: 3, reps: 5, weight: 225 },
-      ],
-    });
-  }
-
-  if (lower.includes('lateral') || lower.includes('raise')) {
-    exercises.push({
-      id: `e-${Date.now()}-3`,
-      name: 'Lateral Raise',
-      variant: lower.includes('incline') ? 'incline' : undefined,
-      weightUnit: lower.includes('kg') ? 'kg' : 'lb',
-      sets: [
-        { setNumber: 1, reps: 12, weight: 8 },
-      ],
-    });
-  }
-
-  // Fallback if nothing detected
-  if (exercises.length === 0) {
-    exercises.push({
-      id: `e-${Date.now()}-0`,
-      name: 'Exercise',
-      weightUnit: 'lb',
-      sets: [{ setNumber: 1, reps: 10, weight: 100 }],
-    });
-  }
-
-  const notes = lower.includes('weak') || lower.includes('tired')
-    ? text.split('.')[0]
-    : undefined;
-
-  return {
-    parsed: {
-      label: 'Push Day',
-      notes,
-      exercises,
-    },
-    question: exercises.length === 1 && exercises[0].name === 'Exercise'
-      ? "I couldn't parse specific exercises. Could you be more specific?"
-      : undefined,
-  };
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
 }
 
 export default function AIOverlay({ visible, onClose, onConfirm }: AIOverlayProps) {
   const [input, setInput] = useState('');
   const [parsed, setParsed] = useState<ParsedWorkout | null>(null);
-  const [question, setQuestion] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
   const inputRef = useRef<TextInput>(null);
   const slideAnim = useRef(new Animated.Value(0)).current;
 
@@ -121,25 +48,47 @@ export default function AIOverlay({ visible, onClose, onConfirm }: AIOverlayProp
       slideAnim.setValue(0);
       setInput('');
       setParsed(null);
-      setQuestion(null);
+      setMessages([]);
     }
   }, [visible]);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-    setIsProcessing(true);
+  const handleSend = async () => {
+    if (!input.trim() || isProcessing) return;
 
-    // Simulate AI processing delay
-    setTimeout(() => {
-      const result = mockParseWorkout(input);
-      setParsed(result.parsed);
-      setQuestion(result.question || null);
+    const userMessage = input.trim();
+    setInput('');
+    setIsProcessing(true);
+    setParsed(null);
+
+    const updatedMessages: Message[] = [...messages, { role: 'user', content: userMessage }];
+    setMessages(updatedMessages);
+
+    try {
+      const result = await parseWorkoutWithAI(userMessage, messages);
+
+      // Store the AI's JSON response as an assistant message for context
+      const assistantContent = JSON.stringify(result);
+      setMessages([...updatedMessages, { role: 'assistant', content: assistantContent }]);
+
+      setParsed(result);
+
+      // If there's a clarifying question, keep the overlay open for follow-up
+      if (result.clarifyingQuestion) {
+        // User can respond and we'll parse again with context
+      }
+    } catch (error) {
+      console.error('AI error:', error);
+      setParsed({
+        exercises: [],
+        clarifyingQuestion: 'Something went wrong. Try again?',
+      });
+    } finally {
       setIsProcessing(false);
-    }, 600);
+    }
   };
 
   const handleConfirm = () => {
-    if (parsed) {
+    if (parsed && parsed.exercises.length > 0) {
       onConfirm(parsed);
       onClose();
     }
@@ -159,47 +108,83 @@ export default function AIOverlay({ visible, onClose, onConfirm }: AIOverlayProp
         <TouchableOpacity style={styles.backdropTouch} onPress={onClose} activeOpacity={1} />
 
         <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]}>
-          {/* Parsed result preview */}
-          {parsed && (
-            <View style={styles.parsedContainer}>
-              <Text style={styles.parsedLabel}>Parsed:</Text>
-              {parsed.notes && (
-                <Text style={styles.parsedNote}>{parsed.notes}</Text>
-              )}
-              {parsed.exercises.map((ex) => (
-                <View key={ex.id} style={styles.parsedExercise}>
-                  <Text style={styles.parsedExName}>
-                    {ex.name}{ex.variant ? ` (${ex.variant})` : ''}
-                  </Text>
-                  <Text style={styles.parsedSets}>
-                    {ex.sets.map((s) => `${s.weight}${ex.weightUnit} x ${s.reps}`).join(' · ')}
-                  </Text>
+          <View style={styles.handle} />
+
+          <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
+            {/* Conversation history */}
+            {messages.map((msg, idx) => {
+              if (msg.role === 'assistant') return null; // Don't show raw JSON
+              return (
+                <View key={idx} style={styles.userBubble}>
+                  <Text style={styles.userBubbleText}>{msg.content}</Text>
                 </View>
-              ))}
+              );
+            })}
 
-              {question && (
-                <Text style={styles.question}>{question}</Text>
-              )}
+            {/* Processing indicator */}
+            {isProcessing && (
+              <View style={styles.processingContainer}>
+                <ActivityIndicator color={colors.accent} size="small" />
+                <Text style={styles.processingText}>Parsing your workout...</Text>
+              </View>
+            )}
 
-              {!question && (
-                <View style={styles.confirmRow}>
-                  <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm}>
-                    <Text style={styles.confirmBtnText}>Log it</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.editBtn} onPress={() => setParsed(null)}>
-                    <Text style={styles.editBtnText}>Edit</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          )}
+            {/* Parsed result preview */}
+            {parsed && !isProcessing && (
+              <View style={styles.parsedContainer}>
+                {parsed.notes && (
+                  <View style={styles.notesBadge}>
+                    <Text style={styles.notesText}>{parsed.notes}</Text>
+                  </View>
+                )}
 
-          {/* Processing indicator */}
-          {isProcessing && (
-            <View style={styles.processingContainer}>
-              <Text style={styles.processingText}>Parsing...</Text>
-            </View>
-          )}
+                {parsed.exercises.length > 0 && (
+                  <>
+                    <Text style={styles.parsedLabel}>
+                      {parsed.label || 'Workout'}
+                    </Text>
+                    {parsed.exercises.map((ex) => (
+                      <View key={ex.id} style={styles.parsedExercise}>
+                        <Text style={styles.parsedExName}>
+                          {ex.name}{ex.variant ? ` (${ex.variant})` : ''}
+                        </Text>
+                        {ex.sets.map((s, si) => (
+                          <Text key={si} style={styles.parsedSet}>
+                            {s.isWarmup ? '  W' : `  ${s.setNumber}`}
+                            {'  '}
+                            {s.weight > 0 ? `${s.weight} ${ex.weightUnit}` : 'BW'}
+                            {' × '}
+                            {s.reps}
+                          </Text>
+                        ))}
+                      </View>
+                    ))}
+                  </>
+                )}
+
+                {parsed.clarifyingQuestion && (
+                  <Text style={styles.question}>{parsed.clarifyingQuestion}</Text>
+                )}
+
+                {!parsed.clarifyingQuestion && parsed.exercises.length > 0 && (
+                  <View style={styles.confirmRow}>
+                    <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm}>
+                      <Text style={styles.confirmBtnText}>Log it</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.editBtn}
+                      onPress={() => {
+                        setParsed(null);
+                        inputRef.current?.focus();
+                      }}
+                    >
+                      <Text style={styles.editBtnText}>Edit</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            )}
+          </ScrollView>
 
           {/* Input area */}
           <View style={styles.inputRow}>
@@ -215,11 +200,11 @@ export default function AIOverlay({ visible, onClose, onConfirm }: AIOverlayProp
               returnKeyType="default"
             />
             <TouchableOpacity
-              style={[styles.sendBtn, !input.trim() && styles.sendBtnDisabled]}
+              style={[styles.sendBtn, (!input.trim() || isProcessing) && styles.sendBtnDisabled]}
               onPress={handleSend}
               disabled={!input.trim() || isProcessing}
             >
-              <Text style={styles.sendBtnText}>→</Text>
+              <Text style={styles.sendBtnText}>↑</Text>
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -238,13 +223,48 @@ const styles = StyleSheet.create({
     backgroundColor: colors.overlay,
   },
   sheet: {
-    backgroundColor: 'rgba(20, 20, 20, 0.95)',
+    backgroundColor: 'rgba(20, 20, 20, 0.97)',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    paddingTop: spacing.md,
     paddingBottom: spacing.xl,
+    maxHeight: '75%',
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.textTertiary,
+    alignSelf: 'center',
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  content: {
     paddingHorizontal: spacing.md,
-    maxHeight: '70%',
+    maxHeight: 400,
+  },
+  userBubble: {
+    alignSelf: 'flex-end',
+    backgroundColor: colors.surfaceLight,
+    borderRadius: 12,
+    borderBottomRightRadius: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
+    maxWidth: '85%',
+  },
+  userBubbleText: {
+    color: colors.text,
+    fontSize: fontSize.sm,
+  },
+  processingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+  },
+  processingText: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
   },
   parsedContainer: {
     backgroundColor: colors.surface,
@@ -254,29 +274,33 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  parsedLabel: {
-    color: colors.accent,
-    fontSize: fontSize.xs,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+  notesBadge: {
+    backgroundColor: colors.accentMuted,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: 6,
     marginBottom: spacing.sm,
   },
-  parsedNote: {
-    color: colors.textSecondary,
+  notesText: {
+    color: colors.accent,
     fontSize: fontSize.sm,
     fontStyle: 'italic',
+  },
+  parsedLabel: {
+    color: colors.text,
+    fontSize: fontSize.md,
+    fontWeight: '600',
     marginBottom: spacing.sm,
   },
   parsedExercise: {
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   parsedExName: {
     color: colors.text,
-    fontSize: fontSize.md,
+    fontSize: fontSize.sm,
     fontWeight: '500',
   },
-  parsedSets: {
+  parsedSet: {
     color: colors.textSecondary,
     fontSize: fontSize.sm,
     fontVariant: ['tabular-nums'],
@@ -285,6 +309,7 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontSize: fontSize.sm,
     marginTop: spacing.sm,
+    fontWeight: '500',
   },
   confirmRow: {
     flexDirection: 'row',
@@ -295,7 +320,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.accent,
     borderRadius: 8,
-    paddingVertical: spacing.sm,
+    paddingVertical: 10,
     alignItems: 'center',
   },
   confirmBtnText: {
@@ -304,7 +329,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
   },
   editBtn: {
-    paddingVertical: spacing.sm,
+    paddingVertical: 10,
     paddingHorizontal: spacing.lg,
     borderRadius: 8,
     borderWidth: 1,
@@ -315,18 +340,12 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: fontSize.md,
   },
-  processingContainer: {
-    padding: spacing.md,
-    alignItems: 'center',
-  },
-  processingText: {
-    color: colors.textSecondary,
-    fontSize: fontSize.sm,
-  },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
   },
   input: {
     flex: 1,
@@ -343,7 +362,7 @@ const styles = StyleSheet.create({
   sendBtn: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: 22,
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
@@ -354,6 +373,6 @@ const styles = StyleSheet.create({
   sendBtnText: {
     color: colors.bg,
     fontSize: fontSize.lg,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });
