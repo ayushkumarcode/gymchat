@@ -11,6 +11,7 @@ import FAB from '../components/FAB';
 import SettingsSheet from '../components/SettingsSheet';
 import AIOverlay from '../components/AIOverlay';
 import AddExerciseForm from '../components/AddExerciseForm';
+import RestTimer from '../components/RestTimer';
 
 function getTodayStr(): string {
   const d = new Date();
@@ -135,6 +136,7 @@ export default function Dashboard() {
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [editingLabel, setEditingLabel] = useState(false);
   const [labelDraft, setLabelDraft] = useState('');
+  const [restTimerVisible, setRestTimerVisible] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   // Load workouts and settings from storage on mount
@@ -455,6 +457,7 @@ export default function Dashboard() {
         {/* Selected day workout */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleRow}>
             <Text style={styles.sectionTitle}>
               {isToday ? 'Today' : formatDate(selectedDate)}
               {selectedWorkout && !editingLabel && (
@@ -478,6 +481,18 @@ export default function Dashboard() {
                 autoFocus
                 selectTextOnFocus
               />
+            )}
+            </View>
+            {selectedWorkout && isToday && (
+              <TouchableOpacity
+                style={[styles.timerBtn, restTimerVisible && styles.timerBtnActive]}
+                onPress={() => setRestTimerVisible(!restTimerVisible)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={[styles.timerIcon, restTimerVisible && styles.timerIconActive]}>
+                  {restTimerVisible ? '■' : '⏱'}
+                </Text>
+              </TouchableOpacity>
             )}
           </View>
 
@@ -573,6 +588,8 @@ export default function Dashboard() {
         <View style={{ height: 100 }} />
       </ScrollView>
       </Animated.View>
+
+      <RestTimer visible={restTimerVisible} onClose={() => setRestTimerVisible(false)} />
 
       <FAB onPress={() => setOverlayVisible(true)} />
 
@@ -695,6 +712,30 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     marginBottom: spacing.sm,
+  },
+  sectionTitleRow: {
+    flex: 1,
+  },
+  timerBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.surfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  timerBtnActive: {
+    backgroundColor: colors.accentMuted,
+    borderColor: colors.accent,
+  },
+  timerIcon: {
+    fontSize: 14,
+  },
+  timerIconActive: {
+    color: colors.accent,
+    fontSize: 10,
   },
   sectionTitle: {
     color: colors.text,
