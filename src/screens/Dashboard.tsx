@@ -138,6 +138,49 @@ export default function Dashboard() {
     );
   };
 
+  const handleAddSet = (exerciseId: string) => {
+    updateWorkouts((prev) =>
+      prev.map((w) => {
+        if (w.date !== selectedDate) return w;
+        return {
+          ...w,
+          exercises: w.exercises.map((ex) => {
+            if (ex.id !== exerciseId) return ex;
+            const lastSet = ex.sets[ex.sets.length - 1];
+            return {
+              ...ex,
+              sets: [
+                ...ex.sets,
+                {
+                  setNumber: ex.sets.length + 1,
+                  reps: lastSet?.reps || 0,
+                  weight: lastSet?.weight || 0,
+                },
+              ],
+            };
+          }),
+        };
+      })
+    );
+  };
+
+  const handleDeleteSet = (exerciseId: string, setIndex: number) => {
+    updateWorkouts((prev) =>
+      prev.map((w) => {
+        if (w.date !== selectedDate) return w;
+        return {
+          ...w,
+          exercises: w.exercises.map((ex) => {
+            if (ex.id !== exerciseId) return ex;
+            const newSets = ex.sets.filter((_, i) => i !== setIndex)
+              .map((s, i) => ({ ...s, setNumber: i + 1 }));
+            return { ...ex, sets: newSets };
+          }).filter((ex) => ex.sets.length > 0),
+        };
+      })
+    );
+  };
+
   const handleConfirmWorkout = (parsed: { label?: string; notes?: string; exercises: Exercise[] }) => {
     const today = getTodayStr();
     const existing = workouts.find((w) => w.date === today);
@@ -208,6 +251,8 @@ export default function Dashboard() {
                 key={exercise.id}
                 exercise={exercise}
                 onUpdateSet={handleUpdateSet}
+                onAddSet={handleAddSet}
+                onDeleteSet={handleDeleteSet}
               />
             ))
           ) : (

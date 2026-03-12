@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform } from 'react-native';
 import { colors, spacing, fontSize } from '../utils/theme';
 import { Exercise, ExerciseSet } from '../types/workout';
 
 interface WorkoutTableProps {
   exercise: Exercise;
-  previousExercise?: Exercise; // same exercise from last session
+  previousExercise?: Exercise;
   onUpdateSet?: (exerciseId: string, setIndex: number, field: 'reps' | 'weight', value: number) => void;
+  onAddSet?: (exerciseId: string) => void;
+  onDeleteSet?: (exerciseId: string, setIndex: number) => void;
 }
 
-export default function WorkoutTable({ exercise, previousExercise, onUpdateSet }: WorkoutTableProps) {
+export default function WorkoutTable({ exercise, previousExercise, onUpdateSet, onAddSet, onDeleteSet }: WorkoutTableProps) {
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
 
@@ -27,7 +29,6 @@ export default function WorkoutTable({ exercise, previousExercise, onUpdateSet }
     setEditingCell(null);
   };
 
-  // Compare with previous session
   const getPrevSet = (setIndex: number): ExerciseSet | undefined => {
     return previousExercise?.sets[setIndex];
   };
@@ -41,13 +42,27 @@ export default function WorkoutTable({ exercise, previousExercise, onUpdateSet }
     return null;
   };
 
+  const handleLongPress = (setIndex: number) => {
+    if (!onDeleteSet) return;
+    if (Platform.OS === 'web') {
+      if (confirm('Delete this set?')) {
+        onDeleteSet(exercise.id, setIndex);
+      }
+    } else {
+      Alert.alert('Delete set', 'Remove this set?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => onDeleteSet(exercise.id, setIndex) },
+      ]);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.exerciseName}>{exercise.name}</Text>
-        {exercise.variant && (
-          <Text style={styles.variant}>{exercise.variant}</Text>
-        )}
+        <Text style={styles.exerciseName}>
+          {exercise.name}
+          {exercise.variant ? <Text style={styles.variant}> {exercise.variant}</Text> : null}
+        </Text>
         <Text style={styles.weightLabel}>
           {exercise.sets[0]?.weight > 0 ? `${exercise.sets[0].weight} ${exercise.weightUnit}` : 'BW'}
         </Text>
@@ -65,65 +80,79 @@ export default function WorkoutTable({ exercise, previousExercise, onUpdateSet }
         const weightKey = `${idx}-weight`;
 
         return (
-          <View key={idx} style={[styles.row, idx % 2 === 0 && styles.rowAlt]}>
-            <Text style={[styles.cell, styles.colSet, styles.setNum]}>
-              {set.isWarmup ? 'W' : set.setNumber}
-            </Text>
+          <TouchableOpacity
+            key={idx}
+            onLongPress={() => handleLongPress(idx)}
+            delayLongPress={500}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.row, idx % 2 === 0 && styles.rowAlt]}>
+              <Text style={[styles.cell, styles.colSet, styles.setNum]}>
+                {set.isWarmup ? 'W' : set.setNumber}
+              </Text>
 
-            {editingCell === repsKey ? (
-              <TextInput
-                style={[styles.cellInput, styles.colReps]}
-                value={editValue}
-                onChangeText={setEditValue}
-                onBlur={() => handleEndEdit(idx, 'reps')}
-                onSubmitEditing={() => handleEndEdit(idx, 'reps')}
-                keyboardType="number-pad"
-                autoFocus
-                selectTextOnFocus
-              />
-            ) : (
-              <TouchableOpacity
-                style={styles.colReps}
-                onPress={() => handleStartEdit(idx, 'reps', set.reps)}
-              >
-                <View style={styles.repsCell}>
-                  <Text style={styles.cell}>{set.reps}</Text>
-                  {repsDelta && (
-                    <Text style={[
-                      styles.delta,
-                      repsDelta.startsWith('+') ? styles.deltaUp : styles.deltaDown,
-                    ]}>
-                      {repsDelta}
-                    </Text>
-                  )}
-                </View>
-              </TouchableOpacity>
-            )}
+              {editingCell === repsKey ? (
+                <TextInput
+                  style={[styles.cellInput, styles.colReps]}
+                  value={editValue}
+                  onChangeText={setEditValue}
+                  onBlur={() => handleEndEdit(idx, 'reps')}
+                  onSubmitEditing={() => handleEndEdit(idx, 'reps')}
+                  keyboardType="number-pad"
+                  autoFocus
+                  selectTextOnFocus
+                />
+              ) : (
+                <TouchableOpacity
+                  style={styles.colReps}
+                  onPress={() => handleStartEdit(idx, 'reps', set.reps)}
+                >
+                  <View style={styles.repsCell}>
+                    <Text style={styles.cell}>{set.reps}</Text>
+                    {repsDelta && (
+                      <Text style={[
+                        styles.delta,
+                        repsDelta.startsWith('+') ? styles.deltaUp : styles.deltaDown,
+                      ]}>
+                        {repsDelta}
+                      </Text>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              )}
 
-            {editingCell === weightKey ? (
-              <TextInput
-                style={[styles.cellInput, styles.colWeight]}
-                value={editValue}
-                onChangeText={setEditValue}
-                onBlur={() => handleEndEdit(idx, 'weight')}
-                onSubmitEditing={() => handleEndEdit(idx, 'weight')}
-                keyboardType="number-pad"
-                autoFocus
-                selectTextOnFocus
-              />
-            ) : (
-              <TouchableOpacity
-                style={styles.colWeight}
-                onPress={() => handleStartEdit(idx, 'weight', set.weight)}
-              >
-                <Text style={styles.cell}>
-                  {set.weight > 0 ? set.weight : '—'}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
+              {editingCell === weightKey ? (
+                <TextInput
+                  style={[styles.cellInput, styles.colWeight]}
+                  value={editValue}
+                  onChangeText={setEditValue}
+                  onBlur={() => handleEndEdit(idx, 'weight')}
+                  onSubmitEditing={() => handleEndEdit(idx, 'weight')}
+                  keyboardType="number-pad"
+                  autoFocus
+                  selectTextOnFocus
+                />
+              ) : (
+                <TouchableOpacity
+                  style={styles.colWeight}
+                  onPress={() => handleStartEdit(idx, 'weight', set.weight)}
+                >
+                  <Text style={styles.cell}>
+                    {set.weight > 0 ? set.weight : '-'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </TouchableOpacity>
         );
       })}
+
+      {/* Add set button */}
+      {onAddSet && (
+        <TouchableOpacity style={styles.addSetBtn} onPress={() => onAddSet(exercise.id)}>
+          <Text style={styles.addSetText}>+ Add set</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -154,8 +183,7 @@ const styles = StyleSheet.create({
   },
   variant: {
     color: colors.textSecondary,
-    fontSize: fontSize.sm,
-    marginRight: spacing.sm,
+    fontWeight: '400',
   },
   weightLabel: {
     color: colors.accent,
@@ -221,5 +249,15 @@ const styles = StyleSheet.create({
   },
   deltaDown: {
     color: colors.red,
+  },
+  addSetBtn: {
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  addSetText: {
+    color: colors.textTertiary,
+    fontSize: fontSize.sm,
   },
 });
