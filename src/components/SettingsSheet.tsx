@@ -95,7 +95,7 @@ export default function SettingsSheet({ visible, onClose, settings, onSettingsCh
     }
   };
 
-  const handleExport = () => {
+  const handleExportCSV = () => {
     const csv = workoutsToCSV(workouts);
     if (Platform.OS === 'web') {
       const blob = new Blob([csv], { type: 'text/csv' });
@@ -107,6 +107,21 @@ export default function SettingsSheet({ visible, onClose, settings, onSettingsCh
       URL.revokeObjectURL(url);
     } else {
       Alert.alert('Export', `${workouts.length} workouts ready for export. CSV sharing coming soon.`);
+    }
+  };
+
+  const handleExportJSON = () => {
+    if (Platform.OS === 'web') {
+      const data = JSON.stringify(workouts, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `gymchat-backup-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      Alert.alert('Export', `${workouts.length} workouts ready for export. JSON sharing coming soon.`);
     }
   };
 
@@ -155,9 +170,14 @@ export default function SettingsSheet({ visible, onClose, settings, onSettingsCh
               </Text>
             </View>
 
-            <TouchableOpacity style={styles.exportBtn} onPress={handleExport}>
-              <Text style={styles.exportBtnText}>Export data (CSV)</Text>
-            </TouchableOpacity>
+            <View style={styles.exportRow}>
+              <TouchableOpacity style={styles.exportBtn} onPress={handleExportCSV}>
+                <Text style={styles.exportBtnText}>Export CSV</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.exportBtn} onPress={handleExportJSON}>
+                <Text style={styles.exportBtnText}>Backup JSON</Text>
+              </TouchableOpacity>
+            </View>
 
             {onClearData && workouts.length > 0 && (
               <TouchableOpacity style={styles.clearBtn} onPress={handleClearData}>
@@ -264,12 +284,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontVariant: ['tabular-nums'],
   },
+  exportRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
   exportBtn: {
+    flex: 1,
     backgroundColor: colors.surfaceLight,
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
-    marginTop: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
   },
