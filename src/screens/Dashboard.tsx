@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, TextInput, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity, Animated } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { colors, spacing, fontSize } from '../utils/theme';
 import { Workout, Exercise, DayData, LiftTrend } from '../types/workout';
@@ -133,6 +133,8 @@ export default function Dashboard() {
   const [viewYear, setViewYear] = useState(new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(new Date().getMonth());
   const [showAddExercise, setShowAddExercise] = useState(false);
+  const [editingLabel, setEditingLabel] = useState(false);
+  const [labelDraft, setLabelDraft] = useState('');
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   // Load workouts and settings from storage on mount
@@ -292,6 +294,23 @@ export default function Dashboard() {
     );
   };
 
+  const handleStartEditLabel = () => {
+    setLabelDraft(selectedWorkout?.label || '');
+    setEditingLabel(true);
+  };
+
+  const handleSaveLabel = () => {
+    if (selectedWorkout) {
+      updateWorkouts((prev) =>
+        prev.map((w) => {
+          if (w.date !== selectedDate) return w;
+          return { ...w, label: labelDraft.trim() || undefined };
+        })
+      );
+    }
+    setEditingLabel(false);
+  };
+
   const handleAddExerciseManual = (exercise: Exercise) => {
     const today = getTodayStr();
     const existing = workouts.find((w) => w.date === today);
@@ -421,8 +440,28 @@ export default function Dashboard() {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>
               {isToday ? 'Today' : formatDate(selectedDate)}
-              {selectedWorkout?.label ? ` · ${selectedWorkout.label}` : ''}
+              {selectedWorkout && !editingLabel && (
+                <Text
+                  style={styles.labelText}
+                  onPress={handleStartEditLabel}
+                >
+                  {selectedWorkout.label ? ` · ${selectedWorkout.label}` : '  + label'}
+                </Text>
+              )}
             </Text>
+            {editingLabel && (
+              <TextInput
+                style={styles.labelInput}
+                value={labelDraft}
+                onChangeText={setLabelDraft}
+                onBlur={handleSaveLabel}
+                onSubmitEditing={handleSaveLabel}
+                placeholder="e.g. Push Day"
+                placeholderTextColor={colors.textTertiary}
+                autoFocus
+                selectTextOnFocus
+              />
+            )}
           </View>
 
           {selectedWorkout && (() => {
@@ -643,6 +682,22 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     fontWeight: '600',
     letterSpacing: -0.2,
+  },
+  labelText: {
+    color: colors.textSecondary,
+    fontWeight: '400',
+  },
+  labelInput: {
+    color: colors.text,
+    fontSize: fontSize.sm,
+    backgroundColor: colors.surfaceLight,
+    borderRadius: 6,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    marginLeft: spacing.sm,
+    minWidth: 120,
   },
   volumeSummary: {
     color: colors.textTertiary,
