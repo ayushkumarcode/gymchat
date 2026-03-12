@@ -12,6 +12,7 @@ import SettingsSheet from '../components/SettingsSheet';
 import AIOverlay from '../components/AIOverlay';
 import AddExerciseForm from '../components/AddExerciseForm';
 import RestTimer from '../components/RestTimer';
+import WeeklyChart from '../components/WeeklyChart';
 
 function getTodayStr(): string {
   const d = new Date();
@@ -623,6 +624,14 @@ export default function Dashboard() {
                 <TrendRow key={trend.name} trend={trend} isLast={idx === trends.length - 1} />
               ))}
             </View>
+          </View>
+        )}
+
+        {/* Weekly volume */}
+        {workouts.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { paddingHorizontal: spacing.md }]}>Weekly Sets</Text>
+            <WeeklyChart workouts={workouts} />
           </View>
         )}
 
