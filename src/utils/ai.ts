@@ -25,7 +25,7 @@ RULES:
 3. If the user mentions feelings or energy levels, extract that as a note.
 4. If reps aren't specified for warmup sets, OMIT those warmup sets entirely. Only include warmup sets where reps were explicitly mentioned.
 5. If reps aren't specified for working sets, ask a clarifying question.
-6. If weight unit isn't specified, default to lb.
+6. If weight unit isn't specified, default to USER_PREFERRED_UNIT.
 7. Keep clarifying questions SHORT (1 sentence max). Only ask when you genuinely can't infer.
 8. Label the workout (Push Day, Pull Day, Leg Day, Upper Body, etc.) based on the exercises.
 9. Common abbreviations: "bench" = "Bench Press", "RDL" = "Romanian Deadlift", "OHP" = "Overhead Press", "BB" = "Barbell", "DB" = "Dumbbell", "lat raises" = "Lateral Raise", "curls" = "Bicep Curl", "tri" = "Tricep", "pullups/pull-ups" = "Pull-Up", "pushups/push-ups" = "Push-Up", "dips" = "Dip".
@@ -67,7 +67,8 @@ Respond ONLY with valid JSON. No markdown, no code fences, no explanation.`;
 
 export async function parseWorkoutWithAI(
   userMessage: string,
-  conversationHistory: { role: 'user' | 'assistant'; content: string }[] = []
+  conversationHistory: { role: 'user' | 'assistant'; content: string }[] = [],
+  weightUnit: 'lb' | 'kg' = 'lb'
 ): Promise<ParsedWorkout> {
   try {
     const messages = [
@@ -78,10 +79,12 @@ export async function parseWorkoutWithAI(
       { role: 'user' as const, content: userMessage },
     ];
 
+    const systemPrompt = SYSTEM_PROMPT.replace('USER_PREFERRED_UNIT', weightUnit);
+
     const response = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1024,
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       messages,
     });
 

@@ -562,6 +562,7 @@ export default function Dashboard() {
         visible={overlayVisible}
         onClose={() => setOverlayVisible(false)}
         onConfirm={handleConfirmWorkout}
+        weightUnit={settings.weightUnit}
       />
 
       <SettingsSheet

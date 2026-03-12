@@ -20,6 +20,7 @@ interface AIOverlayProps {
   visible: boolean;
   onClose: () => void;
   onConfirm: (parsed: ParsedWorkout) => void;
+  weightUnit?: 'lb' | 'kg';
 }
 
 interface Message {
@@ -83,7 +84,7 @@ function useSpeechRecognition() {
   return { isListening, transcript, isSupported, startListening, stopListening };
 }
 
-export default function AIOverlay({ visible, onClose, onConfirm }: AIOverlayProps) {
+export default function AIOverlay({ visible, onClose, onConfirm, weightUnit = 'lb' }: AIOverlayProps) {
   const [input, setInput] = useState('');
   const [parsed, setParsed] = useState<ParsedWorkout | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -135,7 +136,7 @@ export default function AIOverlay({ visible, onClose, onConfirm }: AIOverlayProp
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
 
     try {
-      const result = await parseWorkoutWithAI(userMessage, messages);
+      const result = await parseWorkoutWithAI(userMessage, messages, weightUnit);
 
       const assistantContent = JSON.stringify(result);
       setMessages([...updatedMessages, { role: 'assistant', content: assistantContent }]);
