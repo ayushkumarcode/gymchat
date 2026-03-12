@@ -385,6 +385,38 @@ export default function Dashboard() {
     setSelectedDate(today);
   };
 
+  const handleRepeatWorkout = () => {
+    if (!selectedWorkout) return;
+    const today = getTodayStr();
+    const todayWorkout = workouts.find((w) => w.date === today);
+
+    // Clone exercises with new IDs
+    const cloned: Exercise[] = selectedWorkout.exercises.map((ex, idx) => ({
+      ...ex,
+      id: `e-${Date.now()}-${idx}`,
+      sets: ex.sets.map((s) => ({ ...s })),
+    }));
+
+    if (todayWorkout) {
+      updateWorkouts((prev) =>
+        prev.map((w) => {
+          if (w.date !== today) return w;
+          return { ...w, exercises: [...w.exercises, ...cloned], label: selectedWorkout.label || w.label };
+        })
+      );
+    } else {
+      const newWorkout: Workout = {
+        id: `w-${Date.now()}`,
+        date: today,
+        label: selectedWorkout.label,
+        exercises: cloned,
+        createdAt: new Date().toISOString(),
+      };
+      updateWorkouts((prev) => [newWorkout, ...prev]);
+    }
+    setSelectedDate(today);
+  };
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.safe}>
@@ -540,7 +572,14 @@ export default function Dashboard() {
                 >
                   <Text style={styles.addExerciseBtnText}>+ Add exercise</Text>
                 </TouchableOpacity>
-              ) : null}
+              ) : (
+                <TouchableOpacity
+                  style={styles.repeatBtn}
+                  onPress={handleRepeatWorkout}
+                >
+                  <Text style={styles.repeatBtnText}>Repeat this workout today</Text>
+                </TouchableOpacity>
+              )}
             </>
           ) : (
             <>
@@ -798,6 +837,21 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     fontSize: fontSize.sm,
     marginTop: spacing.xs,
+  },
+  repeatBtn: {
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: 10,
+    backgroundColor: colors.accentMuted,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    alignItems: 'center',
+  },
+  repeatBtnText: {
+    color: colors.accent,
+    fontSize: fontSize.sm,
+    fontWeight: '500',
   },
   addExerciseBtn: {
     marginHorizontal: spacing.md,
