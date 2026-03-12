@@ -10,6 +10,7 @@ import TrendRow from '../components/TrendRow';
 import FAB from '../components/FAB';
 import SettingsSheet from '../components/SettingsSheet';
 import AIOverlay from '../components/AIOverlay';
+import AddExerciseForm from '../components/AddExerciseForm';
 
 function getTodayStr(): string {
   const d = new Date();
@@ -131,6 +132,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [viewYear, setViewYear] = useState(new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(new Date().getMonth());
+  const [showAddExercise, setShowAddExercise] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   // Load workouts and settings from storage on mount
@@ -290,6 +292,30 @@ export default function Dashboard() {
     );
   };
 
+  const handleAddExerciseManual = (exercise: Exercise) => {
+    const today = getTodayStr();
+    const existing = workouts.find((w) => w.date === today);
+
+    if (existing) {
+      updateWorkouts((prev) =>
+        prev.map((w) => {
+          if (w.date !== today) return w;
+          return { ...w, exercises: [...w.exercises, exercise] };
+        })
+      );
+    } else {
+      const newWorkout: Workout = {
+        id: `w-${Date.now()}`,
+        date: today,
+        exercises: [exercise],
+        createdAt: new Date().toISOString(),
+      };
+      updateWorkouts((prev) => [newWorkout, ...prev]);
+    }
+    setSelectedDate(today);
+    setShowAddExercise(false);
+  };
+
   const handleConfirmWorkout = (parsed: { label?: string; notes?: string; exercises: Exercise[] }) => {
     const today = getTodayStr();
     const existing = workouts.find((w) => w.date === today);
@@ -417,27 +443,60 @@ export default function Dashboard() {
           )}
 
           {selectedWorkout ? (
-            selectedWorkout.exercises.map((exercise) => (
-              <WorkoutTable
-                key={exercise.id}
-                exercise={exercise}
-                previousExercise={previousExerciseMap[exercise.id]}
-                onUpdateSet={handleUpdateSet}
-                onAddSet={handleAddSet}
-                onDeleteSet={handleDeleteSet}
-                onDeleteExercise={handleDeleteExercise}
-              />
-            ))
+            <>
+              {selectedWorkout.exercises.map((exercise) => (
+                <WorkoutTable
+                  key={exercise.id}
+                  exercise={exercise}
+                  previousExercise={previousExerciseMap[exercise.id]}
+                  onUpdateSet={handleUpdateSet}
+                  onAddSet={handleAddSet}
+                  onDeleteSet={handleDeleteSet}
+                  onDeleteExercise={handleDeleteExercise}
+                />
+              ))}
+
+              {showAddExercise ? (
+                <AddExerciseForm
+                  onAdd={handleAddExerciseManual}
+                  onCancel={() => setShowAddExercise(false)}
+                />
+              ) : isToday ? (
+                <TouchableOpacity
+                  style={styles.addExerciseBtn}
+                  onPress={() => setShowAddExercise(true)}
+                >
+                  <Text style={styles.addExerciseBtnText}>+ Add exercise</Text>
+                </TouchableOpacity>
+              ) : null}
+            </>
           ) : (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>{isToday ? '✦' : '—'}</Text>
-              <Text style={styles.emptyText}>
-                {isToday ? 'No workout yet' : 'Rest day'}
-              </Text>
-              <Text style={styles.emptySubtext}>
-                {isToday ? 'Tap ✦ to log your workout' : 'No workout recorded'}
-              </Text>
-            </View>
+            <>
+              {showAddExercise ? (
+                <AddExerciseForm
+                  onAdd={handleAddExerciseManual}
+                  onCancel={() => setShowAddExercise(false)}
+                />
+              ) : (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyIcon}>{isToday ? '✦' : '—'}</Text>
+                  <Text style={styles.emptyText}>
+                    {isToday ? 'No workout yet' : 'Rest day'}
+                  </Text>
+                  <Text style={styles.emptySubtext}>
+                    {isToday ? 'Tap ✦ to log your workout' : 'No workout recorded'}
+                  </Text>
+                  {isToday && (
+                    <TouchableOpacity
+                      style={styles.manualAddBtn}
+                      onPress={() => setShowAddExercise(true)}
+                    >
+                      <Text style={styles.manualAddBtnText}>or add manually</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+            </>
           )}
         </View>
 
@@ -624,6 +683,30 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     fontSize: fontSize.sm,
     marginTop: spacing.xs,
+  },
+  addExerciseBtn: {
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+  },
+  addExerciseBtnText: {
+    color: colors.textTertiary,
+    fontSize: fontSize.sm,
+  },
+  manualAddBtn: {
+    marginTop: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  manualAddBtnText: {
+    color: colors.textTertiary,
+    fontSize: fontSize.sm,
+    textDecorationLine: 'underline',
   },
   trendsContainer: {
     marginTop: spacing.xs,
