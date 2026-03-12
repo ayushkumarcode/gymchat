@@ -1,10 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
-import Constants from 'expo-constants';
 import { Exercise } from '../types/workout';
 
 // NOTE: In production, the API key should be on a server, not in the client.
-// For development/prototype, we read from Expo config extra.
-const apiKey = Constants.expoConfig?.extra?.anthropicApiKey || process.env.ANTHROPIC_API_KEY || '';
+// For development, we use EXPO_PUBLIC_ prefix which Expo inlines at build time.
+const apiKey = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY || '';
 
 const client = new Anthropic({
   apiKey,
