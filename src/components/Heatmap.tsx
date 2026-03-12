@@ -106,6 +106,7 @@ export default function Heatmap({ data, selectedDate, onSelectDate, monthLabel, 
                 style={[
                   styles.cell,
                   { width: cellSize, height: cellSize, backgroundColor: getIntensityColor(day.intensity) },
+                  day.intensity > 0 && styles.cellActive,
                   selected && styles.cellSelected,
                   today && !selected && styles.cellToday,
                 ]}
@@ -117,6 +118,9 @@ export default function Heatmap({ data, selectedDate, onSelectDate, monthLabel, 
                 ]}>
                   {new Date(day.date + 'T00:00:00').getDate()}
                 </Text>
+                {day.intensity > 0 && !selected && (
+                  <View style={[styles.cellDot, day.intensity >= 3 && styles.cellDotBright]} />
+                )}
               </AnimatedPressable>
             );
           })}
@@ -178,6 +182,27 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  cellActive: {
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  cellDot: {
+    position: 'absolute',
+    bottom: 3,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(34, 197, 94, 0.5)',
+  },
+  cellDotBright: {
+    backgroundColor: colors.accent,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
   },
   emptyCell: {},
   cellSelected: {
