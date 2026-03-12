@@ -181,6 +181,18 @@ export default function Dashboard() {
     );
   };
 
+  const handleDeleteExercise = (exerciseId: string) => {
+    updateWorkouts((prev) =>
+      prev.map((w) => {
+        if (w.date !== selectedDate) return w;
+        return {
+          ...w,
+          exercises: w.exercises.filter((ex) => ex.id !== exerciseId),
+        };
+      }).filter((w) => w.exercises.length > 0) // Remove workout if no exercises left
+    );
+  };
+
   const handleConfirmWorkout = (parsed: { label?: string; notes?: string; exercises: Exercise[] }) => {
     const today = getTodayStr();
     const existing = workouts.find((w) => w.date === today);
@@ -256,6 +268,7 @@ export default function Dashboard() {
                 onUpdateSet={handleUpdateSet}
                 onAddSet={handleAddSet}
                 onDeleteSet={handleDeleteSet}
+                onDeleteExercise={handleDeleteExercise}
               />
             ))
           ) : (

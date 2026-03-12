@@ -9,9 +9,10 @@ interface WorkoutTableProps {
   onUpdateSet?: (exerciseId: string, setIndex: number, field: 'reps' | 'weight', value: number) => void;
   onAddSet?: (exerciseId: string) => void;
   onDeleteSet?: (exerciseId: string, setIndex: number) => void;
+  onDeleteExercise?: (exerciseId: string) => void;
 }
 
-export default function WorkoutTable({ exercise, previousExercise, onUpdateSet, onAddSet, onDeleteSet }: WorkoutTableProps) {
+export default function WorkoutTable({ exercise, previousExercise, onUpdateSet, onAddSet, onDeleteSet, onDeleteExercise }: WorkoutTableProps) {
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
 
@@ -56,6 +57,20 @@ export default function WorkoutTable({ exercise, previousExercise, onUpdateSet, 
     }
   };
 
+  const handleDeleteExercise = () => {
+    if (!onDeleteExercise) return;
+    if (Platform.OS === 'web') {
+      if (confirm(`Delete ${exercise.name}?`)) {
+        onDeleteExercise(exercise.id);
+      }
+    } else {
+      Alert.alert('Delete exercise', `Remove ${exercise.name}?`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => onDeleteExercise(exercise.id) },
+      ]);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -63,9 +78,16 @@ export default function WorkoutTable({ exercise, previousExercise, onUpdateSet, 
           {exercise.name}
           {exercise.variant ? <Text style={styles.variant}> {exercise.variant}</Text> : null}
         </Text>
-        <Text style={styles.weightLabel}>
-          {exercise.sets[0]?.weight > 0 ? `${exercise.sets[0].weight} ${exercise.weightUnit}` : 'BW'}
-        </Text>
+        <View style={styles.headerRight}>
+          <Text style={styles.weightLabel}>
+            {exercise.sets[0]?.weight > 0 ? `${exercise.sets[0].weight} ${exercise.weightUnit}` : 'BW'}
+          </Text>
+          {onDeleteExercise && (
+            <TouchableOpacity onPress={handleDeleteExercise} style={styles.deleteExBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={styles.deleteExIcon}>×</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <View style={styles.tableHeader}>
@@ -185,10 +207,29 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontWeight: '400',
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   weightLabel: {
     color: colors.accent,
     fontSize: fontSize.sm,
     fontWeight: '600',
+  },
+  deleteExBtn: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.surfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteExIcon: {
+    color: colors.textTertiary,
+    fontSize: 16,
+    fontWeight: '500',
+    marginTop: -1,
   },
   tableHeader: {
     flexDirection: 'row',
