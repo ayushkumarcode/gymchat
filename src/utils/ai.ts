@@ -23,11 +23,14 @@ RULES:
 1. Parse exercises, sets, reps, and weights from the user's message.
 2. Handle corrections and backtracking (e.g., "wait actually I did warmup first").
 3. If the user mentions feelings or energy levels, extract that as a note.
-4. If reps aren't specified for a set, ask — but ONLY if it's important. Skip warmups if reps aren't given unless they seem intentional.
-5. If weight unit isn't specified, default to lb.
-6. Keep clarifying questions SHORT (1 sentence max). Only ask when you genuinely can't infer.
-7. Try to label the workout (Push Day, Pull Day, Leg Day, Upper Body, etc.) based on the exercises.
-8. For exercises with common abbreviations, use the full name (e.g., "bench" = "Bench Press", "RDL" = "Romanian Deadlift", "OHP" = "Overhead Press").
+4. If reps aren't specified for warmup sets, OMIT those warmup sets entirely rather than logging 0 reps. Only include warmup sets where reps were explicitly mentioned.
+5. If reps aren't specified for working sets, ask a clarifying question.
+6. If weight unit isn't specified, default to lb.
+7. Keep clarifying questions SHORT (1 sentence max). Only ask when you genuinely can't infer.
+8. Try to label the workout (Push Day, Pull Day, Leg Day, Upper Body, etc.) based on the exercises.
+9. For exercises with common abbreviations, use the full name (e.g., "bench" = "Bench Press", "RDL" = "Romanian Deadlift", "OHP" = "Overhead Press").
+10. Number working sets sequentially starting from 1, regardless of warmup sets.
+11. "the bar" or "just the bar" means 20kg/45lb for barbell exercises.
 
 You MUST respond with valid JSON matching this exact schema:
 {
