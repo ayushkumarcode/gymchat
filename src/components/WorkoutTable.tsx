@@ -3,6 +3,48 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform } 
 import { colors, spacing, fontSize } from '../utils/theme';
 import { Exercise, ExerciseSet } from '../types/workout';
 
+type MuscleGroup = 'chest' | 'back' | 'shoulders' | 'legs' | 'arms' | 'core' | 'cardio';
+
+const MUSCLE_GROUP_COLORS: Record<MuscleGroup, string> = {
+  chest: '#3B82F6',
+  back: '#8B5CF6',
+  shoulders: '#F59E0B',
+  legs: '#EF4444',
+  arms: '#EC4899',
+  core: '#14B8A6',
+  cardio: '#06B6D4',
+};
+
+const EXERCISE_GROUPS: Record<string, MuscleGroup> = {
+  'bench press': 'chest', 'chest press': 'chest', 'dumbbell press': 'chest', 'incline press': 'chest',
+  'decline press': 'chest', 'chest fly': 'chest', 'dip': 'chest', 'push-up': 'chest', 'pec deck': 'chest',
+  'pull-up': 'back', 'chin-up': 'back', 'lat pulldown': 'back', 'row': 'back', 'barbell row': 'back',
+  'dumbbell row': 'back', 'cable row': 'back', 'seated row': 'back', 'pendlay row': 'back',
+  'deadlift': 'back', 'conventional deadlift': 'back', 'sumo deadlift': 'legs',
+  't-bar row': 'back', 'face pull': 'back',
+  'overhead press': 'shoulders', 'ohp': 'shoulders', 'military press': 'shoulders',
+  'lateral raise': 'shoulders', 'front raise': 'shoulders', 'rear delt': 'shoulders',
+  'arnold press': 'shoulders', 'shoulder press': 'shoulders', 'upright row': 'shoulders',
+  'squat': 'legs', 'leg press': 'legs', 'lunge': 'legs', 'leg curl': 'legs', 'leg extension': 'legs',
+  'romanian deadlift': 'legs', 'rdl': 'legs', 'hack squat': 'legs', 'calf raise': 'legs',
+  'hip thrust': 'legs', 'bulgarian split squat': 'legs', 'goblet squat': 'legs',
+  'bicep curl': 'arms', 'curl': 'arms', 'hammer curl': 'arms', 'preacher curl': 'arms',
+  'tricep': 'arms', 'tricep pushdown': 'arms', 'skull crusher': 'arms', 'overhead extension': 'arms',
+  'concentration curl': 'arms', 'cable curl': 'arms',
+  'plank': 'core', 'crunch': 'core', 'sit-up': 'core', 'leg raise': 'core', 'ab wheel': 'core',
+  'russian twist': 'core', 'hanging leg raise': 'core',
+};
+
+function getMuscleGroup(exerciseName: string): MuscleGroup | null {
+  const lower = exerciseName.toLowerCase();
+  // Sort by key length descending so more specific matches win
+  const sorted = Object.entries(EXERCISE_GROUPS).sort((a, b) => b[0].length - a[0].length);
+  for (const [key, group] of sorted) {
+    if (lower.includes(key)) return group;
+  }
+  return null;
+}
+
 interface WorkoutTableProps {
   exercise: Exercise;
   previousExercise?: Exercise;
@@ -83,13 +125,22 @@ export default function WorkoutTable({ exercise, previousExercise, prWeight, onU
     return best;
   })();
 
+  const muscleGroup = getMuscleGroup(exercise.name);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.exerciseName}>
-          {exercise.name}
-          {exercise.variant ? <Text style={styles.variant}> {exercise.variant}</Text> : null}
-        </Text>
+        <View style={styles.nameColumn}>
+          <Text style={styles.exerciseName}>
+            {exercise.name}
+            {exercise.variant ? <Text style={styles.variant}> {exercise.variant}</Text> : null}
+          </Text>
+          {muscleGroup && (
+            <View style={[styles.muscleTag, { backgroundColor: MUSCLE_GROUP_COLORS[muscleGroup] + '18', borderColor: MUSCLE_GROUP_COLORS[muscleGroup] + '40' }]}>
+              <Text style={[styles.muscleTagText, { color: MUSCLE_GROUP_COLORS[muscleGroup] }]}>{muscleGroup}</Text>
+            </View>
+          )}
+        </View>
         <View style={styles.headerRight}>
           {estimated1RM > 0 && (
             <Text style={styles.e1rmLabel}>e1RM {estimated1RM}</Text>
@@ -219,11 +270,27 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+  nameColumn: {
+    flex: 1,
+    gap: 3,
+  },
   exerciseName: {
     color: colors.text,
     fontSize: fontSize.md,
     fontWeight: '600',
-    flex: 1,
+  },
+  muscleTag: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    borderWidth: 1,
+  },
+  muscleTagText: {
+    fontSize: 9,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   variant: {
     color: colors.textSecondary,
