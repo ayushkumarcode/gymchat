@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { colors, spacing, fontSize } from '../utils/theme';
-import { Exercise } from '../types/workout';
 import { parseWorkoutWithAI, ParsedWorkout } from '../utils/ai';
 
 interface AIOverlayProps {
