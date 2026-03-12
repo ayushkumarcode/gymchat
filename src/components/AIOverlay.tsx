@@ -12,6 +12,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { colors, spacing, fontSize } from '../utils/theme';
 import { Exercise } from '../types/workout';
 import { parseWorkoutWithAI, ParsedWorkout } from '../utils/ai';
@@ -107,7 +108,8 @@ export default function AIOverlay({ visible, onClose, onConfirm }: AIOverlayProp
       >
         <TouchableOpacity style={styles.backdropTouch} onPress={onClose} activeOpacity={1} />
 
-        <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]}>
+        <Animated.View style={[styles.sheetOuter, { transform: [{ translateY }] }]}>
+          <BlurView intensity={40} tint="dark" style={styles.sheet}>
           <View style={styles.handle} />
 
           <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
@@ -207,6 +209,7 @@ export default function AIOverlay({ visible, onClose, onConfirm }: AIOverlayProp
               <Text style={styles.sendBtnText}>↑</Text>
             </TouchableOpacity>
           </View>
+          </BlurView>
         </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
@@ -222,12 +225,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.overlay,
   },
-  sheet: {
-    backgroundColor: 'rgba(20, 20, 20, 0.97)',
+  sheetOuter: {
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    paddingBottom: spacing.xl,
+    overflow: 'hidden',
     maxHeight: '75%',
+  },
+  sheet: {
+    backgroundColor: 'rgba(20, 20, 20, 0.85)',
+    paddingBottom: spacing.xl,
   },
   handle: {
     width: 36,
